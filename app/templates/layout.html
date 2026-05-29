@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Urban Sentinel AI - {% block title %}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#a098b0",
+                        "surface-variant": "#1e1e30",
+                        "primary-fixed-dim": "#ff80aa",
+                        "on-tertiary-container": "#fff0c0",
+                        "surface-container-high": "#1e1e30",
+                        "on-primary": "#1a0010",
+                        "outline": "#5a5068",
+                        "on-secondary-container": "#c0fff4",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "primary": "#ff2d78",
+                        "surface-container-highest": "#28283e",
+                        "on-background": "#e8e0f0",
+                        "on-secondary-fixed-variant": "#004d4d",
+                        "surface-container-lowest": "#0a0a12",
+                        "tertiary-container": "#665200",
+                        "on-tertiary-fixed": "#1a1000",
+                        "primary-container": "#b3004e",
+                        "background": "#0a0a12",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "on-primary-fixed": "#3d0020",
+                        "inverse-surface": "#e8e0f0",
+                        "secondary": "#00ffcc",
+                        "on-surface": "#e8e0f0",
+                        "on-primary-container": "#ffe0ec",
+                        "inverse-on-surface": "#0a0a12",
+                        "primary-fixed": "#ffe0ec",
+                        "on-tertiary": "#1a1000",
+                        "on-secondary": "#001a1a",
+                        "error-container": "#3d0f0f",
+                        "surface-container-low": "#111118",
+                        "secondary-fixed": "#c0fff4",
+                        "on-error": "#1a0000",
+                        "on-error-container": "#ffa0a0",
+                        "surface-tint": "#ff2d78",
+                        "surface-dim": "#0f0f1a",
+                        "secondary-container": "#004d3d",
+                        "error": "#ff4444",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "surface": "#0f0f1a",
+                        "tertiary-fixed": "#fff0c0",
+                        "tertiary": "#ffe04a",
+                        "surface-bright": "#1a1a2e",
+                        "inverse-primary": "#8c0038",
+                        "on-secondary-fixed": "#001a1a",
+                        "surface-container": "#141422",
+                        "outline-variant": "#302840"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .neon-text-primary { text-shadow: 0 0 8px currentColor; }
+        .neon-text-secondary { text-shadow: 0 0 8px currentColor; }
+        .neon-text-tertiary { text-shadow: 0 0 8px currentColor; }
+        .neon-border-primary { border: 1px solid rgba(255, 45, 120, 0.5); box-shadow: inset 0 0 12px rgba(255, 45, 120, 0.1); }
+        .neon-glow-primary:hover { box-shadow: 0 0 16px rgba(255, 45, 120, 0.4); }
+        .scanline-bg {
+            background-image: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+        }
+        .nav-item-active {
+            background: rgba(255, 45, 120, 0.1);
+            color: #ff2d78;
+            border-left: 4px solid #ff2d78;
+            box-shadow: inset 0 0 10px rgba(255, 45, 120, 0.1);
+            transform: translateX(4px);
+            opacity: 1 !important;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-background text-on-surface font-body antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden scanline-bg">
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-6 py-3 bg-surface-container-lowest/80 backdrop-blur-md border-b border-primary/20 shadow-[0_0_15px_rgba(255,45,120,0.1)] md:hidden">
+        <div class="flex items-center gap-4">
+            <span class="font-headline text-xl font-black tracking-widest text-primary drop-shadow-[0_0_8px_rgba(255,45,120,0.8)]">URBAN SENTINEL AI</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="text-primary font-label tracking-tighter text-xs border border-primary/50 px-3 py-1 rounded neon-glow-primary transition-all duration-300">ACTIVE</button>
+            <span class="material-symbols-outlined text-primary cursor-pointer">notifications</span>
+        </div>
+    </nav>
+
+    <!-- SideNavBar -->
+    <aside class="hidden md:flex fixed left-0 top-0 h-full flex-col pt-16 z-40 w-64 bg-surface-container-low/95 border-r border-primary/30 shadow-[5px_0_15px_rgba(0,0,0,0.5)]">
+        <div class="px-6 py-8 border-b border-outline-variant/30">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-10 h-10 rounded-full bg-surface-container-highest border border-primary/30 flex items-center justify-center overflow-hidden">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4ygsoTK5rFt0rjIVM33cATOduscGcFHFFxnxjk6YajdBjH3U02I_0eAuTFQVHYDdJi-5pLLKlqDRm4Kjiz0DhZKiil_jEl1yD1dMRHGB_uAt2jmKMDuWtShEd0kn7axgMy50BxxFURaIUddDg6maEGSf5IOXWZUsdZsKnZhB1shqmMU6VP6VQbuMUP58JUFeET10Z65Lr99CFPFBppMFtdCiB0a-ZvYv34KLAFuu0m7CsZZJn7y5022GxmSD7qRW1Ys6TFPxsxY52" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="font-headline text-lg font-bold text-primary neon-text-primary tracking-widest">{{ session.get('agent_id', 'SENTINEL-01') }}</h2>
+                    <p class="font-label text-xs text-on-surface-variant">{{ session.get('user_role', 'SYSTEM OPERATOR') }}</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 py-6 flex flex-col gap-2 px-2">
+            {% set nav_items = [
+                ('monitoring.index', 'visibility', 'Monitoring'),
+                ('heatmaps.index', 'layers', 'Density & Analytics'),
+                ('detection.index', 'android_fingerprint', 'Detection'),
+                ('performance.index', 'speed', 'Performance'),
+                ('architecture.index', 'account_tree', 'Architecture')
+            ] %}
+            
+            {% for endpoint, icon, label in nav_items %}
+            <a href="{{ url_for(endpoint) }}" class="flex items-center gap-3 text-on-surface-variant px-4 py-3 opacity-70 hover:bg-secondary/5 hover:text-secondary hover:opacity-100 transition-all font-label text-xs uppercase tracking-widest rounded-lg {% if request.endpoint == endpoint %}nav-item-active{% endif %}">
+                <span class="material-symbols-outlined">{{ icon }}</span>
+                {{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+        <div class="px-6 pb-8 pt-4">
+            <button id="diag-btn" onclick="openDiagnostics()"
+                class="w-full py-3 bg-surface-container-highest border border-primary/30 text-primary font-label text-xs uppercase tracking-widest rounded neon-glow-primary transition-all duration-300 mb-4 flex items-center justify-center gap-2 hover:bg-primary/10">
+                <span class="material-symbols-outlined text-sm">health_and_safety</span>RUN DIAGNOSTICS
+            </button>
+            <a class="flex items-center gap-3 text-on-surface-variant px-4 py-2 opacity-70 hover:text-error hover:opacity-100 transition-all font-label text-xs uppercase tracking-widest" href="{{ url_for('auth.logout') }}">
+                <span class="material-symbols-outlined">power_settings_new</span>Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- ── Diagnostics Modal ── -->
+    <div id="diag-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);">
+        <div class="bg-surface-container-low border border-primary/30 rounded-lg w-full max-w-lg mx-4 shadow-[0_0_40px_rgba(255,45,120,0.2)] overflow-hidden">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-outline-variant/30">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">health_and_safety</span>
+                    <h2 class="font-headline text-base font-bold text-on-surface">System Diagnostics</h2>
+                </div>
+                <button onclick="closeDiagnostics()" class="text-on-surface-variant hover:text-on-surface transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div id="diag-body" class="px-5 py-4 max-h-96 overflow-y-auto">
+                <div class="flex items-center justify-center py-8 gap-3 text-on-surface-variant">
+                    <span class="material-symbols-outlined animate-spin text-primary">autorenew</span>
+                    <span class="font-label text-xs uppercase tracking-widest">Running diagnostics...</span>
+                </div>
+            </div>
+            <div class="flex justify-between items-center px-5 py-3 border-t border-outline-variant/30">
+                <span id="diag-status" class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">—</span>
+                <button onclick="openDiagnostics()" class="font-label text-[10px] border border-secondary/40 text-secondary px-3 py-1 rounded hover:bg-secondary/10 transition-colors uppercase tracking-widest">Re-run</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openDiagnostics() {
+        document.getElementById('diag-modal').style.display = 'flex';
+        document.getElementById('diag-body').innerHTML = `
+            <div class="flex items-center justify-center py-8 gap-3 text-on-surface-variant">
+                <span class="material-symbols-outlined animate-spin text-primary" style="animation:spin 1s linear infinite">autorenew</span>
+                <span class="font-label text-xs uppercase tracking-widest">Running diagnostics...</span>
+            </div>`;
+        document.getElementById('diag-status').innerText = '—';
+        fetch('/api/diagnostics')
+            .then(r=>r.json())
+            .then(d => renderDiag(d))
+            .catch(e => {
+                document.getElementById('diag-body').innerHTML =
+                    `<div class="text-error font-label text-xs p-4">${e}</div>`;
+            });
+    }
+    function closeDiagnostics() {
+        document.getElementById('diag-modal').style.display = 'none';
+    }
+    document.getElementById('diag-modal').addEventListener('click', function(e){
+        if(e.target===this) closeDiagnostics();
+    });
+    function renderDiag(d) {
+        const overall = d.status === 'OK'
+            ? '<span class="text-secondary">● ALL SYSTEMS OPERATIONAL</span>'
+            : `<span class="text-tertiary">⚠ ${d.issues.join(', ')}</span>`;
+        const rows = (d.checks||[]).map(c => {
+            const icon = c.status==='PASS' ? 'check_circle' : c.status==='WARN' ? 'warning' : 'cancel';
+            const col  = c.status==='PASS' ? 'text-secondary' : c.status==='WARN' ? 'text-tertiary' : 'text-primary';
+            return `<div class="flex items-start gap-3 py-2 border-b border-outline-variant/20">
+                <span class="material-symbols-outlined ${col} text-base mt-0.5 flex-shrink-0">${icon}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="font-label text-xs text-on-surface font-bold">${c.name}</div>
+                    <div class="font-label text-[10px] text-on-surface-variant truncate">${c.detail||'—'}</div>
+                </div>
+                <span class="font-label text-[10px] ${col} flex-shrink-0 font-bold">${c.status}</span>
+            </div>`;
+        }).join('');
+        document.getElementById('diag-body').innerHTML = `
+            <div class="mb-3 font-label text-xs">${overall}</div>
+            ${rows}
+            <div class="pt-2 font-label text-[9px] text-on-surface-variant">Run at: ${d.timestamp||'—'}</div>`;
+        document.getElementById('diag-status').innerText = d.status === 'OK' ? '✓ No issues found' : `${(d.issues||[]).length} issue(s) found`;
+        document.getElementById('diag-status').className = 'font-label text-[10px] uppercase tracking-widest ' + (d.status==='OK'?'text-secondary':'text-tertiary');
+    }
+    </script>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 md:ml-64 pt-20 md:pt-16 p-6 min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,329 @@
+{% extends "layout.html" %}
+{% block title %}System Architecture{% endblock %}
+
+{% block head %}
+<style>
+    .arch-card { transition: all 0.3s ease; }
+    .arch-card:hover { transform: translateY(-2px); }
+    .flow-arrow { color: #302840; }
+    .connector-v { width: 1px; background: linear-gradient(to bottom, #302840, #302840); margin: 0 auto; }
+    .connector-h { height: 1px; background: linear-gradient(to right, transparent, #302840, transparent); }
+    .status-dot { box-shadow: 0 0 8px currentColor; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+    <div>
+        <h1 class="font-headline text-3xl font-bold text-on-surface mb-1 tracking-tight">System Architecture</h1>
+        <p class="font-label text-sm text-on-surface-variant uppercase tracking-widest">CNN-LSTM-Autoencoder · YOLOv5n · Optical-Flow Heatmap · Alert Engine</p>
+    </div>
+    <div class="flex gap-3 items-center">
+        <div class="flex items-center gap-2 font-label text-xs text-secondary">
+            <span class="w-2 h-2 rounded-full bg-secondary status-dot animate-pulse"></span>
+            3/3 MODULES ONLINE
+        </div>
+        <div class="bg-surface-container px-4 py-2 rounded border border-outline-variant/30">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Version</span>
+            <span class="block font-headline text-sm text-on-surface font-bold">v4.2.0</span>
+        </div>
+    </div>
+</header>
+
+<!-- Pipeline Flow Diagram -->
+<div class="bg-surface-container rounded p-6 border border-outline-variant/30 mb-6">
+    <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-6">End-to-End Inference Pipeline</h3>
+    <div class="overflow-x-auto">
+        <div class="flex items-center gap-0 min-w-max">
+            <!-- Stage 1: Input -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-surface-container-highest border border-secondary/40 rounded px-4 py-3 text-center min-w-28">
+                    <span class="material-symbols-outlined text-secondary text-2xl block mb-1">videocam</span>
+                    <div class="font-label text-[10px] uppercase text-secondary font-bold">INPUT</div>
+                    <div class="font-label text-[9px] text-on-surface-variant mt-1">Video Feed<br>160×120 px</div>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center px-1"><div class="connector-h flex-1"></div><span class="font-label text-[10px] text-on-surface-variant">→</span></div>
+            <!-- Stage 2: Preprocessing -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-surface-container-highest border border-outline-variant/50 rounded px-4 py-3 text-center min-w-28">
+                    <span class="material-symbols-outlined text-on-surface-variant text-2xl block mb-1">tune</span>
+                    <div class="font-label text-[10px] uppercase text-on-surface font-bold">PREPROCESS</div>
+                    <div class="font-label text-[9px] text-on-surface-variant mt-1">CLAHE · GaussBlur<br>FrameSkip ÷5fps</div>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center px-1"><div class="connector-h flex-1"></div><span class="font-label text-[10px] text-on-surface-variant">→</span></div>
+            <!-- Stage 3: Three modules (fork) -->
+            <div class="flex flex-col gap-2">
+                <!-- Module A -->
+                <div class="bg-surface-container-highest border border-primary/40 rounded px-4 py-2 text-center min-w-36">
+                    <div class="font-label text-[10px] uppercase text-primary font-bold">CNN-LSTM-AE</div>
+                    <div class="font-label text-[9px] text-on-surface-variant">MobileNetV2+LSTM<br>Sliding window (seq=8)</div>
+                </div>
+                <!-- Module B -->
+                <div class="bg-surface-container-highest border border-secondary/40 rounded px-4 py-2 text-center min-w-36">
+                    <div class="font-label text-[10px] uppercase text-secondary font-bold">Optical-Flow Heatmap</div>
+                    <div class="font-label text-[9px] text-on-surface-variant">Motion accumulation<br>JET colormap overlay</div>
+                </div>
+                <!-- Module C -->
+                <div class="bg-surface-container-highest border border-tertiary/40 rounded px-4 py-2 text-center min-w-36">
+                    <div class="font-label text-[10px] uppercase text-tertiary font-bold">YOLOv5n Tracker</div>
+                    <div class="font-label text-[9px] text-on-surface-variant">Every 10 frames<br>320×240 subsampled</div>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center px-1"><div class="connector-h flex-1"></div><span class="font-label text-[10px] text-on-surface-variant">→</span></div>
+            <!-- Stage 4: Score Blending -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-surface-container-highest border border-outline-variant/50 rounded px-4 py-3 text-center min-w-28">
+                    <span class="material-symbols-outlined text-on-surface text-2xl block mb-1">merge</span>
+                    <div class="font-label text-[10px] uppercase text-on-surface font-bold">BLEND</div>
+                    <div class="font-label text-[9px] text-on-surface-variant mt-1">max(raw_err,<br>yolo_boost,<br>motion×5)</div>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center px-1"><div class="connector-h flex-1"></div><span class="font-label text-[10px] text-on-surface-variant">→</span></div>
+            <!-- Stage 5: Smoothing -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-surface-container-highest border border-outline-variant/50 rounded px-4 py-3 text-center min-w-28">
+                    <span class="material-symbols-outlined text-on-surface text-2xl block mb-1">ssid_chart</span>
+                    <div class="font-label text-[10px] uppercase text-on-surface font-bold">SMOOTH</div>
+                    <div class="font-label text-[9px] text-on-surface-variant mt-1">Rolling avg<br>score buffer</div>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center px-1"><div class="connector-h flex-1"></div><span class="font-label text-[10px] text-on-surface-variant">→</span></div>
+            <!-- Stage 6: Alert Engine -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-surface-container-highest border border-primary/50 rounded px-4 py-3 text-center min-w-28 shadow-[inset_0_0_10px_rgba(255,45,120,0.08)]">
+                    <span class="material-symbols-outlined text-primary text-2xl block mb-1">notifications_active</span>
+                    <div class="font-label text-[10px] uppercase text-primary font-bold">ALERT ENGINE</div>
+                    <div class="font-label text-[9px] text-on-surface-variant mt-1">SQLite log<br>Debounce 30s</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Three Module Cards -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+    <!-- Card 1: CNN-LSTM Anomaly Detection -->
+    <div class="arch-card bg-surface-container rounded border border-primary/30 shadow-[inset_0_0_15px_rgba(255,45,120,0.05)] hover:shadow-[0_0_20px_rgba(255,45,120,0.15)] hover:border-primary/50 flex flex-col relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-60"></div>
+        <div class="p-6 flex-1 flex flex-col">
+            <div class="flex items-start gap-3 mb-4">
+                <span class="material-symbols-outlined text-primary text-3xl">radar</span>
+                <div>
+                    <h3 class="font-headline font-bold text-base text-on-surface">Spatio-Temporal Anomaly Detection</h3>
+                    <p class="font-label text-[10px] text-primary uppercase tracking-widest">Module 1</p>
+                </div>
+            </div>
+            <p class="font-body text-xs text-on-surface-variant mb-5 leading-relaxed flex-1">
+                A CNN-LSTM Autoencoder trained on the <strong class="text-on-surface">UCSD Pedestrian Ped2 dataset</strong> learns the normal distribution of crowd motion.
+                At inference time, the reconstruction error of an 8-frame sliding window (stride=4) serves as the raw anomaly score.
+                CLAHE pre-processing and Gaussian blur reduce sensor noise before the MobileNetV2 backbone encodes spatial features.
+                A 2-layer LSTM (hidden=256) captures temporal dependencies across the sequence.
+            </p>
+            <div class="grid grid-cols-2 gap-3 font-label text-[10px] mb-4">
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Architecture</span><span class="text-on-surface font-bold">CNN-LSTM-AE</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Backbone</span><span class="text-on-surface font-bold">MobileNetV2</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Latent Dim</span><span class="text-on-surface font-bold">512</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">LSTM Layers</span><span class="text-on-surface font-bold">2 × 256</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Seq Length</span><span class="text-on-surface font-bold">8 frames</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">AUC-ROC</span><span class="text-primary font-bold">0.7564</span></div>
+            </div>
+            <div class="border-t border-surface-variant pt-4 flex justify-between items-center">
+                <div>
+                    <span class="block font-label text-[10px] text-on-surface-variant">Threshold</span>
+                    <span id="arch-threshold" class="font-headline text-xl font-bold text-primary">0.31</span>
+                </div>
+                <a href="{{ url_for('performance.index') }}" class="text-primary hover:text-primary-fixed font-label text-xs tracking-wider flex items-center gap-1 hover:translate-x-1 transition-transform">
+                    VIEW TELEMETRY <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Optical Flow Heatmap -->
+    <div class="arch-card bg-surface-container rounded border border-secondary/30 shadow-[inset_0_0_15px_rgba(0,255,204,0.05)] hover:shadow-[0_0_20px_rgba(0,255,204,0.15)] hover:border-secondary/50 flex flex-col relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-secondary to-transparent opacity-60"></div>
+        <div class="p-6 flex-1 flex flex-col">
+            <div class="flex items-start gap-3 mb-4">
+                <span class="material-symbols-outlined text-secondary text-3xl">layers</span>
+                <div>
+                    <h3 class="font-headline font-bold text-base text-on-surface">Optical-Flow Density Heatmap</h3>
+                    <p class="font-label text-[10px] text-secondary uppercase tracking-widest">Module 2</p>
+                </div>
+            </div>
+            <p class="font-body text-xs text-on-surface-variant mb-5 leading-relaxed flex-1">
+                Frame-differencing accumulates a <strong class="text-on-surface">motion energy map</strong> over a 30-frame history window.
+                Morphological operations (kernel=5) clean noise. Gaussian blur (kernel=15) produces smooth density gradients.
+                The JET colormap overlay (blue → red) visualises crowd pressure zones in real-time.
+                The density score is the normalized pixel-sum of the heatmap, thresholded at <strong class="text-on-surface">0.75</strong> for overcrowding alerts.
+            </p>
+            <div class="grid grid-cols-2 gap-3 font-label text-[10px] mb-4">
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">History Length</span><span class="text-on-surface font-bold">30 frames</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Colormap</span><span class="text-on-surface font-bold">JET (cv2)</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Morph Kernel</span><span class="text-on-surface font-bold">5 × 5</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Blur Kernel</span><span class="text-on-surface font-bold">15 × 15</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Crowd Threshold</span><span class="text-on-surface font-bold">0.75</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Alert Type</span><span class="text-tertiary font-bold">OVERCROWDING</span></div>
+            </div>
+            <div class="border-t border-surface-variant pt-4 flex justify-between items-center">
+                <div>
+                    <span class="block font-label text-[10px] text-on-surface-variant">Live Density</span>
+                    <span id="arch-density" class="font-headline text-xl font-bold text-secondary">—</span>
+                </div>
+                <a href="{{ url_for('heatmaps.index') }}" class="text-secondary hover:text-secondary-fixed font-label text-xs tracking-wider flex items-center gap-1 hover:translate-x-1 transition-transform">
+                    OPEN HEATMAP <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Abandoned Object Detection -->
+    <div class="arch-card bg-surface-container rounded border border-tertiary/30 shadow-[inset_0_0_15px_rgba(255,224,74,0.05)] hover:shadow-[0_0_20px_rgba(255,224,74,0.15)] hover:border-tertiary/50 flex flex-col relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-tertiary to-transparent opacity-60"></div>
+        <div class="p-6 flex-1 flex flex-col">
+            <div class="flex items-start gap-3 mb-4">
+                <span class="material-symbols-outlined text-tertiary text-3xl">shopping_bag</span>
+                <div>
+                    <h3 class="font-headline font-bold text-base text-on-surface">Abandoned Object Detection</h3>
+                    <p class="font-label text-[10px] text-tertiary uppercase tracking-widest">Module 3</p>
+                </div>
+            </div>
+            <p class="font-body text-xs text-on-surface-variant mb-5 leading-relaxed flex-1">
+                YOLOv5n runs every <strong class="text-on-surface">10 processed frames</strong> on a 320×240 downscaled frame for speed.
+                A centroid-based tracker classifies objects as stationary if pixel displacement ≤ 20px.
+                Items stationary for ≥ <strong class="text-on-surface">30 seconds</strong> trigger an <strong class="text-primary">ABANDONED_OBJECT</strong> alert.
+                Vehicles (car, bus, motorcycle, etc.) also directly boost the CNN-LSTM blended anomaly score by +1.0.
+            </p>
+            <div class="grid grid-cols-2 gap-3 font-label text-[10px] mb-4">
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Model</span><span class="text-on-surface font-bold">YOLOv5n</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Confidence</span><span class="text-on-surface font-bold">≥ 0.40</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Stationary Px</span><span class="text-on-surface font-bold">≤ 20 px</span></div>
+                <div class="bg-surface-container-high rounded p-2"><span class="text-on-surface-variant block">Time Trigger</span><span class="text-on-surface font-bold">≥ 30 s</span></div>
+                <div class="bg-surface-container-high rounded p-2 col-span-2"><span class="text-on-surface-variant block">Target Classes</span><span class="text-tertiary font-bold">backpack · suitcase · handbag · bicycle · motorcycle · car · truck · bus · skateboard</span></div>
+            </div>
+            <div class="border-t border-surface-variant pt-4 flex justify-between items-center">
+                <div>
+                    <span class="block font-label text-[10px] text-on-surface-variant">Abandoned Alerts</span>
+                    <span id="arch-abandoned" class="font-headline text-xl font-bold text-tertiary">—</span>
+                </div>
+                <a href="{{ url_for('detection.index') }}" class="text-tertiary hover:text-tertiary-fixed font-label text-xs tracking-wider flex items-center gap-1 hover:translate-x-1 transition-transform">
+                    OPEN DETECTION <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Engine & Tech Stack -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <!-- Alert Engine -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <div class="flex items-center gap-3 mb-5">
+            <span class="material-symbols-outlined text-primary text-2xl">notifications_active</span>
+            <div>
+                <h3 class="font-headline text-sm font-bold text-on-surface">Alert Engine (SQLite-backed)</h3>
+                <p class="font-label text-[10px] text-on-surface-variant">Centralized debouncing · severity scoring · REST API</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4 font-label text-[10px]">
+            <div class="bg-surface-container-high rounded p-3">
+                <span class="text-on-surface-variant block mb-1">Alert Types</span>
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-primary">ANOMALY</span>
+                    <span class="text-tertiary">OVERCROWDING</span>
+                    <span class="text-secondary">ABANDONED_OBJECT</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-high rounded p-3">
+                <span class="text-on-surface-variant block mb-1">Severity Levels</span>
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-on-surface-variant">LOW (0.0–0.4)</span>
+                    <span class="text-secondary">MEDIUM (0.4–0.6)</span>
+                    <span class="text-tertiary">HIGH (0.6–0.8)</span>
+                    <span class="text-primary">CRITICAL (0.8–1.0)</span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-container-high rounded p-3 font-label text-[10px]">
+            <div class="grid grid-cols-2 gap-y-1.5">
+                <span class="text-on-surface-variant">Debounce Window</span><span class="text-on-surface text-right">30 seconds</span>
+                <span class="text-on-surface-variant">Storage</span><span class="text-on-surface text-right">SQLite (logs/alerts.db)</span>
+                <span class="text-on-surface-variant">Metrics Table</span><span class="text-on-surface text-right">fps · density · anomaly</span>
+                <span class="text-on-surface-variant">REST Endpoints</span><span class="text-on-surface text-right">/api/anomalies · /api/metrics</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <div class="flex items-center gap-3 mb-5">
+            <span class="material-symbols-outlined text-secondary text-2xl">account_tree</span>
+            <div>
+                <h3 class="font-headline text-sm font-bold text-on-surface">Technology Stack</h3>
+                <p class="font-label text-[10px] text-on-surface-variant">UCSD Pedestrian Dataset · Python · Flask</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 gap-2 font-label text-[10px]">
+            {% for cat, items in [
+                ('ML / DL', 'PyTorch · TorchVision · MobileNetV2 · CNN-LSTM'),
+                ('Computer Vision', 'OpenCV · CLAHE · Gaussian Blur · Optical Flow'),
+                ('Object Detection', 'Ultralytics YOLOv5n · Centroid Tracker'),
+                ('Backend', 'Flask · SQLite · Threading · REST JSON API'),
+                ('Dataset', 'UCSD Pedestrian Ped2 · 160×120 px · 5 fps target'),
+                ('Evaluation', 'AUC-ROC 0.7564 · Threshold 0.31 · Seq=8 Stride=4')
+            ] %}
+            <div class="bg-surface-container-high rounded p-2 flex gap-3 items-start">
+                <span class="text-on-surface-variant w-28 flex-shrink-0">{{ cat }}</span>
+                <span class="text-on-surface">{{ items }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Connect to Socket.IO
+    const socket = io();
+
+    socket.on('metrics_update', (data) => {
+        if (data.density_score !== undefined) {
+            document.getElementById('arch-density').innerText = data.density_score.toFixed(3);
+        }
+        if (data.current_threshold !== undefined) {
+            document.getElementById('arch-threshold').innerText = data.current_threshold.toFixed(2);
+        }
+    });
+
+    socket.on('new_alert', (alert) => {
+        if (alert.alert_type === 'ABANDONED_OBJECT') {
+            const el = document.getElementById('arch-abandoned');
+            const current = parseInt(el.innerText || '0') || 0;
+            el.innerText = current + 1;
+        }
+    });
+
+    // Initial load
+    async function fetchArchStats() {
+        try {
+            const [mResp, aResp] = await Promise.all([
+                fetch('/api/metrics?limit=1'),
+                fetch('/api/anomalies?limit=100')
+            ]);
+            const metrics = await mResp.json();
+            const alerts = await aResp.json();
+            
+            if (metrics.length) {
+                document.getElementById('arch-density').innerText = (metrics[0].density_score || 0).toFixed(3);
+                if (metrics[0].current_threshold) {
+                    document.getElementById('arch-threshold').innerText = metrics[0].current_threshold.toFixed(2);
+                }
+            }
+            const abandonedCount = alerts.filter(a => a.alert_type === 'ABANDONED_OBJECT').length;
+            document.getElementById('arch-abandoned').innerText = abandonedCount;
+        } catch(err) {}
+    }
+    fetchArchStats();
+</script>
+{% endblock %}

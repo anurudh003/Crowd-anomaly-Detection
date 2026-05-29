@@ -1,0 +1,426 @@
+{% extends "layout.html" %}
+{% block title %}Performance Telemetry{% endblock %}
+
+{% block head %}
+<style>
+    .neon-border-primary { border: 1px solid rgba(255,45,120,0.5); box-shadow: inset 0 0 12px rgba(255,45,120,0.08); }
+    .neon-border-secondary { border: 1px solid rgba(0,255,204,0.4); box-shadow: inset 0 0 12px rgba(0,255,204,0.06); }
+    .chart-bar { transition: height 0.4s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<header class="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+    <div>
+        <h1 class="font-headline text-3xl font-bold text-on-surface mb-1 tracking-tight">Model Telemetry &amp; Performance</h1>
+        <p class="font-label text-sm text-on-surface-variant uppercase tracking-widest">UCSD Pedestrian · CNN-LSTM Autoencoder · MobileNetV2 Backbone</p>
+    </div>
+    <div class="flex gap-3">
+        <div class="bg-surface-container px-4 py-2 rounded border border-outline-variant/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Pipeline Status</span>
+            <span id="pipeline-status" class="font-headline text-sm text-secondary font-bold">STANDBY</span>
+        </div>
+        <div class="bg-surface-container px-4 py-2 rounded border border-outline-variant/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Threshold</span>
+            <span id="display-threshold" class="font-headline text-sm text-tertiary font-bold">0.31</span>
+        </div>
+        <div class="bg-surface-container px-4 py-2 rounded border border-outline-variant/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">AUC-ROC</span>
+            <span class="font-headline text-sm text-primary font-bold neon-text-primary">0.7564</span>
+        </div>
+    </div>
+</header>
+
+<!-- Top Row: Model Metrics -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <!-- AUC ROC -->
+    <div class="bg-surface-container rounded p-5 neon-border-primary relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-primary/8 to-transparent"></div>
+        <div class="relative z-10">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">AUC-ROC Score</h3>
+            <div class="font-headline text-4xl font-bold text-primary neon-text-primary">0.7564</div>
+            <div class="font-label text-[10px] text-on-surface-variant mt-2">UCSD Ped2 Evaluation</div>
+        </div>
+    </div>
+    <!-- Precision -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <h3 class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Precision</h3>
+        <div class="font-headline text-4xl font-bold text-on-surface">0.91</div>
+        <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-3 overflow-hidden">
+            <div class="bg-secondary h-full shadow-[0_0_8px_rgba(0,255,204,0.5)]" style="width:91%"></div>
+        </div>
+    </div>
+    <!-- Recall -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <h3 class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Recall</h3>
+        <div class="font-headline text-4xl font-bold text-on-surface">0.76</div>
+        <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-3 overflow-hidden">
+            <div class="bg-tertiary h-full shadow-[0_0_8px_rgba(255,224,74,0.4)]" style="width:76%"></div>
+        </div>
+    </div>
+    <!-- F1 Score -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <h3 class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">F1 Score</h3>
+        <div class="font-headline text-4xl font-bold text-on-surface">0.83</div>
+        <div class="w-full bg-surface-container-highest h-1.5 rounded-full mt-3 overflow-hidden">
+            <div class="bg-primary/70 h-full" style="width:83%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Middle Row: Live Charts -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <!-- Anomaly Score Timeline -->
+    <div class="md:col-span-2 bg-surface-container rounded p-5 border border-outline-variant/30">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest">Live Anomaly Score Timeline</h3>
+            <span class="font-label text-[10px] text-secondary">AUTO-REFRESH 2s</span>
+        </div>
+        <div id="anomaly-chart" class="h-32 w-full flex items-end gap-0.5 bg-surface-container-highest rounded p-2 relative overflow-hidden border border-outline-variant/30">
+            <!-- Bars injected by JS -->
+        </div>
+        <div class="flex justify-between mt-2 font-label text-[10px] text-on-surface-variant">
+            <span>OLDEST</span>
+            <span id="chart-threshold-display" class="text-primary">THRESHOLD: 0.31</span>
+            <span>LATEST</span>
+        </div>
+    </div>
+
+    <!-- Current Live Metrics -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30 flex flex-col gap-3">
+        <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-1">Live Pipeline Metrics</h3>
+        <div class="flex-1 flex flex-col gap-3 justify-around">
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-on-surface">Anomaly Score</span>
+                    <span id="live-anomaly" class="text-primary font-bold">0.00</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="live-anomaly-bar" class="h-full bg-primary shadow-[0_0_8px_rgba(255,45,120,0.6)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-on-surface">Density Score</span>
+                    <span id="live-density" class="text-secondary font-bold">0.00</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="live-density-bar" class="h-full bg-secondary shadow-[0_0_8px_rgba(0,255,204,0.4)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-on-surface">Inference FPS</span>
+                    <span id="live-fps" class="text-tertiary font-bold">0.0</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="live-fps-bar" class="h-full bg-tertiary shadow-[0_0_8px_rgba(255,224,74,0.4)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="pt-2 border-t border-outline-variant/30">
+                <span class="font-label text-[10px] text-on-surface-variant">YOLO Cadence</span>
+                <span class="block font-label text-sm text-on-surface">Every 10 frames</span>
+            </div>
+            <div>
+                <span class="font-label text-[10px] text-on-surface-variant">Target FPS</span>
+                <span class="block font-label text-sm text-on-surface">5 fps (inference)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Row: Video Processing Engine + Alert History -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <!-- Video Processing Engine -->
+    <div class="md:col-span-2 bg-surface-container rounded p-5 border border-outline-variant/30">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="font-headline text-base font-bold text-on-surface">Video Processing Engine</h3>
+            <span class="font-label text-[10px] text-on-surface-variant">CNN-LSTM-Autoencoder · device: cpu</span>
+        </div>
+        <form id="upload-form" class="flex flex-col md:flex-row gap-3 items-end mb-5">
+            <div class="flex-1 w-full">
+                <label class="block font-label text-[10px] text-on-surface-variant uppercase mb-1">Upload Surveillance Feed (mp4/avi/mov)</label>
+                <input type="file" name="video" accept="video/*"
+                    class="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-2 text-sm text-on-surface focus:outline-none focus:border-primary/50 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary/20 file:text-primary file:font-label file:text-xs">
+            </div>
+            <div class="w-full md:w-28">
+                <label class="block font-label text-[10px] text-on-surface-variant uppercase mb-1">Threshold</label>
+                <input type="number" name="threshold" value="0.31" step="0.01" min="0" max="1"
+                    class="w-full bg-surface-container-highest border border-outline-variant/50 rounded p-2 text-sm text-on-surface focus:outline-none focus:border-primary/50">
+            </div>
+            <button type="submit"
+                class="w-full md:w-auto bg-primary/20 border border-primary/50 text-primary px-6 py-2 rounded font-label text-xs uppercase tracking-widest hover:bg-primary/30 transition-all shadow-[0_0_10px_rgba(255,45,120,0.2)]">
+                START ANALYSIS
+            </button>
+        </form>
+
+        <div id="progress-container" class="hidden">
+            <div class="flex justify-between items-end mb-2">
+                <div>
+                    <span id="status-text" class="font-label text-xs text-primary uppercase tracking-widest">Processing...</span>
+                    <p id="filename-text" class="text-[10px] text-on-surface-variant mt-0.5"></p>
+                </div>
+                <span id="pct-text" class="font-headline text-xl font-bold text-primary">0%</span>
+            </div>
+            <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden border border-outline-variant/30">
+                <div id="progress-bar" class="bg-primary h-full w-0 transition-all duration-500 shadow-[0_0_10px_rgba(255,45,120,0.5)]"></div>
+            </div>
+            <div class="flex justify-between mt-3">
+                <div class="flex gap-3">
+                    <div class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant/30 rounded text-center">
+                        <span class="block text-[10px] text-on-surface-variant uppercase">Frames</span>
+                        <span id="frames-text" class="font-label text-sm text-on-surface">0 / 0</span>
+                    </div>
+                    <div class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant/30 rounded text-center">
+                        <span class="block text-[10px] text-on-surface-variant uppercase">Elapsed</span>
+                        <span id="elapsed-text" class="font-label text-sm text-on-surface">0s</span>
+                    </div>
+                </div>
+                <div id="result-summary" class="hidden text-right">
+                    <span class="block text-[10px] text-secondary uppercase">Anomalies Detected</span>
+                    <span id="anomaly-rate-text" class="font-label text-sm text-secondary font-bold">0% (0 frames)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Type Breakdown -->
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30 flex flex-col gap-4">
+        <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest">Alert Breakdown (Session)</h3>
+        <div id="alert-breakdown" class="flex-1 flex flex-col gap-3 justify-around">
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-primary">ANOMALY</span>
+                    <span id="cnt-anomaly" class="text-primary font-bold">0</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="bar-anomaly" class="h-full bg-primary shadow-[0_0_8px_rgba(255,45,120,0.5)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-tertiary">OVERCROWDING</span>
+                    <span id="cnt-density" class="text-tertiary font-bold">0</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="bar-density" class="h-full bg-tertiary shadow-[0_0_8px_rgba(255,224,74,0.4)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-xs mb-1">
+                    <span class="text-secondary">ABANDONED OBJ</span>
+                    <span id="cnt-obj" class="text-secondary font-bold">0</span>
+                </div>
+                <div class="h-1.5 bg-surface-container-highest rounded overflow-hidden">
+                    <div id="bar-obj" class="h-full bg-secondary shadow-[0_0_8px_rgba(0,255,204,0.4)] transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="pt-3 border-t border-outline-variant/30 grid grid-cols-2 gap-2 font-label text-[10px]">
+                <div class="text-on-surface-variant">Architecture</div>
+                <div class="text-on-surface text-right">CNN-LSTM-AE</div>
+                <div class="text-on-surface-variant">Backbone</div>
+                <div class="text-on-surface text-right">MobileNetV2</div>
+                <div class="text-on-surface-variant">Latent Dim</div>
+                <div class="text-on-surface text-right">512</div>
+                <div class="text-on-surface-variant">LSTM Layers</div>
+                <div class="text-on-surface text-right">2 × 256</div>
+                <div class="text-on-surface-variant">Dataset</div>
+                <div class="text-on-surface text-right">UCSD Ped2</div>
+                <div class="text-on-surface-variant">Seq Length</div>
+                <div class="text-on-surface text-right">8 frames</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Metrics Table -->
+<div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest">Recent Frame Metrics Log</h3>
+        <span class="font-label text-[10px] text-secondary">LIVE · Last 20 entries</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full font-label text-xs">
+            <thead>
+                <tr class="border-b border-outline-variant/30">
+                    <th class="text-left text-on-surface-variant py-2 pr-4">#</th>
+                    <th class="text-left text-on-surface-variant py-2 pr-4">TIMESTAMP</th>
+                    <th class="text-right text-on-surface-variant py-2 pr-4">FPS</th>
+                    <th class="text-right text-on-surface-variant py-2 pr-4">DENSITY</th>
+                    <th class="text-right text-on-surface-variant py-2 pr-4">ANOMALY SCORE</th>
+                    <th class="text-right text-on-surface-variant py-2">FRAMES</th>
+                </tr>
+            </thead>
+            <tbody id="metrics-table" class="text-on-surface">
+                <tr><td colspan="6" class="py-6 text-center text-on-surface-variant italic">Awaiting pipeline telemetry...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('upload-form');
+    const progContainer = document.getElementById('progress-container');
+    const progBar = document.getElementById('progress-bar');
+    const pctText = document.getElementById('pct-text');
+    const framesText = document.getElementById('frames-text');
+    const elapsedText = document.getElementById('elapsed-text');
+    const statusText = document.getElementById('status-text');
+    const filenameText = document.getElementById('filename-text');
+    const resultSummary = document.getElementById('result-summary');
+    const anomalyRateText = document.getElementById('anomaly-rate-text');
+    const pipelineStatus = document.getElementById('pipeline-status');
+
+    // Anomaly score history for chart
+    let anomalyHistory = [];
+    let densityHistory = [];
+    let currentThreshold = 0.31; // Default, will be updated by status
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        try {
+            const resp = await fetch('/api/process_video', { method: 'POST', body: fd });
+            const data = await resp.json();
+            if (data.error) { alert(data.error); return; }
+            progContainer.classList.remove('hidden');
+            resultSummary.classList.add('hidden');
+            filenameText.innerText = data.filename;
+            pipelineStatus.innerText = 'RUNNING';
+            pipelineStatus.className = 'font-headline text-sm text-primary font-bold';
+            pollStatus();
+        } catch(err) { console.error(err); }
+    };
+
+    async function pollStatus() {
+        const resp = await fetch('/api/status');
+        const data = await resp.json();
+        
+        if (data.threshold !== undefined) {
+            currentThreshold = data.threshold;
+            document.getElementById('display-threshold').innerText = currentThreshold.toFixed(2);
+            document.getElementById('chart-threshold-display').innerText = `THRESHOLD: ${currentThreshold.toFixed(2)}`;
+        }
+        
+        if (data.total_frames > 0) {
+            progBar.style.width = `${data.pct_complete}%`;
+            pctText.innerText = `${Math.round(data.pct_complete)}%`;
+            framesText.innerText = `${data.frames_done} / ${data.total_frames}`;
+        } else {
+            progBar.style.width = '100%';
+            progBar.classList.add('animate-pulse');
+            pctText.innerText = 'Calculating...';
+            framesText.innerText = `${data.frames_done} / ?`;
+        }
+        
+        elapsedText.innerText = `${data.elapsed_seconds}s`;
+        if (data.running) {
+            statusText.innerText = 'Processing...';
+            statusText.className = 'font-label text-xs text-primary uppercase tracking-widest';
+            pipelineStatus.innerText = 'RUNNING';
+            pipelineStatus.className = 'font-headline text-sm text-primary font-bold animate-pulse';
+            setTimeout(pollStatus, 1000);
+        } else if (data.result_summary) {
+            statusText.innerText = 'Analysis Complete';
+            statusText.className = 'font-label text-xs text-secondary uppercase tracking-widest';
+            resultSummary.classList.remove('hidden');
+            anomalyRateText.innerText = `${data.result_summary.anomaly_rate}% (${data.result_summary.anomaly_frames} frames)`;
+            pipelineStatus.innerText = 'COMPLETE';
+            pipelineStatus.className = 'font-headline text-sm text-secondary font-bold';
+            progBar.style.width = '100%';
+            pctText.innerText = '100%';
+        } else if (data.error) {
+            statusText.innerText = 'Error: ' + data.error;
+            statusText.className = 'font-label text-xs text-error uppercase tracking-widest';
+            pipelineStatus.innerText = 'ERROR';
+            pipelineStatus.className = 'font-headline text-sm text-error font-bold';
+        }
+    }
+
+    const socket = io();
+
+    socket.on('metrics_update', (data) => {
+        // Only update if pipeline is running
+        if (pipelineStatus.innerText !== 'RUNNING') return;
+
+        const anomaly = data.anomaly_score || 0;
+        const density = data.density_score || 0;
+        const fps = data.fps || 0;
+        
+        if (data.current_threshold !== undefined) {
+            currentThreshold = data.current_threshold;
+            document.getElementById('display-threshold').innerText = currentThreshold.toFixed(2);
+            document.getElementById('chart-threshold-display').innerText = `THRESHOLD: ${currentThreshold.toFixed(2)}`;
+        }
+
+        document.getElementById('live-anomaly').innerText = anomaly.toFixed(3);
+        document.getElementById('live-anomaly-bar').style.width = Math.min(100, anomaly * 100) + '%';
+        document.getElementById('live-density').innerText = density.toFixed(3);
+        document.getElementById('live-density-bar').style.width = Math.min(100, density * 10) + '%';
+        document.getElementById('live-fps').innerText = fps.toFixed(1);
+        document.getElementById('live-fps-bar').style.width = Math.min(100, (fps / 10) * 100) + '%';
+
+        // Anomaly chart
+        anomalyHistory.push(data);
+        if (anomalyHistory.length > 20) anomalyHistory.shift();
+
+        const reversed = [...anomalyHistory].reverse();
+        const maxScore = 1.0;
+        const threshold = currentThreshold;
+        const chart = document.getElementById('anomaly-chart');
+        
+        chart.innerHTML = reversed.map(d => {
+            const pct = Math.max(4, Math.min(100, (d.anomaly_score / maxScore) * 100));
+            const isAnomaly = d.anomaly_score > threshold;
+            const color = isAnomaly ? 'bg-primary shadow-[0_0_8px_rgba(255,45,120,0.7)]' : 'bg-secondary/40';
+            return `<div class="flex-1 ${color} transition-all duration-300 rounded-t" style="height:${pct}%" title="Score: ${d.anomaly_score.toFixed(3)}"></div>`;
+        }).join('');
+
+        // Threshold line overlay
+        const thresholdPct = (threshold / maxScore) * 100;
+        chart.innerHTML += `<div class="absolute left-0 right-0 border-t border-dashed border-primary/60 pointer-events-none" style="bottom:${thresholdPct}%"><span class="absolute right-1 -top-4 font-label text-[9px] text-primary/80">THR</span></div>`;
+
+        // Update table dynamically
+        const tbody = document.getElementById('metrics-table');
+        tbody.innerHTML = anomalyHistory.map((d, i) => {
+            const isAnom = d.anomaly_score > currentThreshold;
+            const rowClass = isAnom ? 'border-l-2 border-l-primary' : '';
+            return `<tr class="border-b border-outline-variant/20 hover:bg-surface-container-high/50 transition-colors ${rowClass}">
+                <td class="py-1.5 pr-4 text-on-surface-variant">${anomalyHistory.length - i}</td>
+                <td class="py-1.5 pr-4 text-on-surface-variant">${(d.timestamp || '').slice(11,19) || '—'}</td>
+                <td class="py-1.5 pr-4 text-right text-tertiary">${d.fps ? d.fps.toFixed(1) : '—'}</td>
+                <td class="py-1.5 pr-4 text-right text-secondary">${d.density_score ? d.density_score.toFixed(3) : '—'}</td>
+                <td class="py-1.5 pr-4 text-right ${isAnom ? 'text-primary font-bold' : 'text-on-surface'}">${d.anomaly_score ? d.anomaly_score.toFixed(3) : '—'}</td>
+                <td class="py-1.5 text-right text-on-surface-variant">Live</td>
+            </tr>`;
+        }).join('');
+    });
+
+    async function fetchAlerts() {
+        try {
+            const resp = await fetch('/api/anomalies?limit=50');
+            const data = await resp.json();
+            const cntAnom = data.filter(a => a.alert_type === 'ANOMALY').length;
+            const cntDens = data.filter(a => a.alert_type === 'OVERCROWDING').length;
+            const cntObj  = data.filter(a => a.alert_type === 'ABANDONED_OBJECT').length;
+            const total = Math.max(1, cntAnom + cntDens + cntObj);
+
+            document.getElementById('cnt-anomaly').innerText = cntAnom;
+            document.getElementById('bar-anomaly').style.width = (cntAnom / total * 100) + '%';
+            document.getElementById('cnt-density').innerText = cntDens;
+            document.getElementById('bar-density').style.width = (cntDens / total * 100) + '%';
+            document.getElementById('cnt-obj').innerText = cntObj;
+            document.getElementById('bar-obj').style.width = (cntObj / total * 100) + '%';
+        } catch(err) {}
+    }
+
+    socket.on('new_alert', (alert) => {
+        fetchAlerts();
+    });
+
+    // Initial status check
+    pollStatus();
+    fetchAlerts();
+</script>
+{% endblock %}

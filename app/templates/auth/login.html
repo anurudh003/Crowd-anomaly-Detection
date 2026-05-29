@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Urban Sentinel AI - Authentication</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700;800;900&amp;family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#a098b0",
+                        "surface-variant": "#1e1e30",
+                        "primary-fixed-dim": "#ff80aa",
+                        "on-tertiary-container": "#fff0c0",
+                        "surface-container-high": "#1e1e30",
+                        "on-primary": "#1a0010",
+                        "outline": "#5a5068",
+                        "on-secondary-container": "#c0fff4",
+                        "secondary-fixed-dim": "#00e6b8",
+                        "on-tertiary-fixed-variant": "#665200",
+                        "primary": "#ff2d78",
+                        "surface-container-highest": "#28283e",
+                        "on-background": "#e8e0f0",
+                        "on-secondary-fixed-variant": "#004d4d",
+                        "surface-container-lowest": "#0a0a12",
+                        "tertiary-container": "#665200",
+                        "on-tertiary-fixed": "#1a1000",
+                        "primary-container": "#b3004e",
+                        "background": "#0a0a12",
+                        "tertiary-fixed-dim": "#ffe04a",
+                        "on-primary-fixed": "#3d0020",
+                        "inverse-surface": "#e8e0f0",
+                        "secondary": "#00ffcc",
+                        "on-surface": "#e8e0f0",
+                        "on-primary-container": "#ffe0ec",
+                        "inverse-on-surface": "#0a0a12",
+                        "primary-fixed": "#ffe0ec",
+                        "on-tertiary": "#1a1000",
+                        "on-secondary": "#001a1a",
+                        "error-container": "#3d0f0f",
+                        "surface-container-low": "#111118",
+                        "secondary-fixed": "#c0fff4",
+                        "on-error": "#1a0000",
+                        "on-error-container": "#ffa0a0",
+                        "surface-tint": "#ff2d78",
+                        "surface-dim": "#0f0f1a",
+                        "secondary-container": "#004d3d",
+                        "error": "#ff4444",
+                        "on-primary-fixed-variant": "#8c0038",
+                        "surface": "#0f0f1a",
+                        "tertiary-fixed": "#fff0c0",
+                        "tertiary": "#ffe04a",
+                        "surface-bright": "#1a1a2e",
+                        "inverse-primary": "#8c0038",
+                        "on-secondary-fixed": "#001a1a",
+                        "surface-container": "#141422",
+                        "outline-variant": "#302840"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .scan-lines {
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 255, 204, 0.05) 50%,
+                    rgba(0, 255, 204, 0.05)
+                );
+                background-size: 100% 4px;
+            }
+            .bounding-box {
+                border: 1px solid rgba(0, 255, 204, 0.6);
+                box-shadow: inset 0 0 10px rgba(0, 255, 204, 0.1), 0 0 10px rgba(0, 255, 204, 0.2);
+                position: absolute;
+            }
+            .bounding-box::before, .bounding-box::after {
+                content: '';
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                border: 2px solid #00ffcc;
+            }
+            .bounding-box::before {
+                top: -2px; left: -2px;
+                border-right: none; border-bottom: none;
+            }
+            .bounding-box::after {
+                bottom: -2px; right: -2px;
+                border-left: none; border-top: none;
+            }
+            .neon-text-primary {
+                text-shadow: 0 0 8px currentColor;
+            }
+            .form-input-cyber {
+                @apply w-full bg-surface-container-lowest/50 border border-outline-variant text-on-surface font-body px-4 py-3 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/50 transition-all placeholder:text-on-surface-variant/50;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen overflow-hidden flex flex-col relative selection:bg-primary/30 selection:text-primary">
+<!-- Cinematic Backdrop & UI Overlays -->
+<div class="absolute inset-0 z-0 bg-surface-lowest overflow-hidden pointer-events-none">
+<!-- Hero Background Image -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent z-10"></div>
+<img alt="Urban AI Background" class="w-full h-full object-cover opacity-40 mix-blend-luminosity filter contrast-125 blur-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPHdr_gecn2MoZ-eeGJo2uoifZcPZ7l6FAc85FfFM06Q-qN_UR8KRxDDJV-EAaUpeh9cK7vr0SvdeTWcUpDPg1qUO4hadhzsd0RJNAnYp-21LdXaNxTc53go7liv31uDkjXSwsIS6a2Bgik0Ro8-iW7tvcVKoL-lxdjypeBJCsrOrR5vFG0clttdjb6Kr999O9DSYmn8Edr4_LsQw9C1kYpM_DjusFGxYiMzEgE69kK9HhycNnLUkCMxn637iRdlXGxiQPPpXEXNb_"/>
+<!-- Scan Lines Effect -->
+<div class="absolute inset-0 scan-lines z-20 opacity-60"></div>
+<!-- Decorative Bounding Boxes -->
+<div class="bounding-box z-20 w-64 h-64 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20 border-primary/40 shadow-[inset_0_0_20px_rgba(255,45,120,0.1),0_0_20px_rgba(255,45,120,0.1)] rounded-sm">
+</div>
+</div>
+
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest/80 backdrop-blur-md fixed top-0 w-full z-50 flex justify-between items-center px-6 py-3 border-b border-primary/20 shadow-[0_0_15px_rgba(255,45,120,0.1)]">
+<!-- Brand / Logo -->
+<a href="{{ url_for('auth.landing') }}" class="font-headline text-xl font-black tracking-widest text-primary drop-shadow-[0_0_8px_rgba(255,45,120,0.8)] flex items-center gap-2 hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">radar</span>
+            URBAN SENTINEL AI
+        </a>
+<!-- Navigation Links (Telemetry Data) -->
+<nav class="hidden md:flex gap-8 items-center">
+<span class="text-secondary font-bold font-label tracking-tighter drop-shadow-[0_0_5px_rgba(0,255,204,0.6)] flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>
+                AUTH SERVER: ONLINE
+            </span>
+</nav>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<a href="{{ url_for('auth.landing') }}" class="bg-surface/50 border border-outline-variant text-on-surface-variant px-4 py-2 font-label text-xs uppercase tracking-widest hover:text-on-surface hover:border-secondary/50 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                RETURN TO GRID
+            </a>
+</div>
+</header>
+
+<!-- Main Login Content -->
+<main class="relative z-30 flex-1 flex flex-col justify-center items-center px-6 text-center w-full max-w-md mx-auto pt-16">
+    
+    <div class="w-full bg-surface-container-high/80 backdrop-blur-xl border border-primary/30 p-8 shadow-[0_0_30px_rgba(255,45,120,0.15)] relative group">
+        <!-- Corner decorations -->
+        <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary -translate-x-1 -translate-y-1"></div>
+        <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary translate-x-1 -translate-y-1"></div>
+        <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary -translate-x-1 translate-y-1"></div>
+        <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary translate-x-1 translate-y-1"></div>
+
+        <div class="mb-8 flex flex-col items-center">
+            <span class="material-symbols-outlined text-4xl text-primary mb-3 drop-shadow-[0_0_8px_rgba(255,45,120,0.8)]">admin_panel_settings</span>
+            <h1 class="font-headline text-2xl font-bold text-on-surface uppercase tracking-widest">
+                SYSTEM <span class="text-primary neon-text-primary">ACCESS</span>
+            </h1>
+            <p class="font-label text-xs text-secondary mt-2 tracking-[0.2em] uppercase">Level 4 Clearance Required</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-6 border border-error bg-error/10 text-error px-4 py-2 text-sm font-label uppercase tracking-widest flex items-center justify-center gap-2 rounded-sm shadow-[0_0_10px_rgba(255,68,68,0.2)]">
+            <span class="material-symbols-outlined text-[16px]">warning</span>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form class="space-y-5 text-left" action="{{ url_for('auth.login') }}" method="POST">
+            <div class="space-y-1">
+                <label for="agent_id" class="font-label text-xs text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px]">badge</span> Agent ID
+                </label>
+                <div class="relative">
+                    <input type="text" id="agent_id" name="agent_id" required class="form-input-cyber pl-10" placeholder="e.g. DIR-001" autocomplete="username">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/50 text-[18px]">terminal</span>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label for="passkey" class="font-label text-xs text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px]">key</span> Encryption Key
+                </label>
+                <div class="relative">
+                    <input type="password" id="passkey" name="passkey" required class="form-input-cyber pl-10" placeholder="••••••••••••" autocomplete="current-password">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant/50 text-[18px]">lock</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <label class="flex items-center gap-2 cursor-pointer group/check">
+                    <div class="relative flex items-center justify-center">
+                        <input type="checkbox" class="peer sr-only">
+                        <div class="w-4 h-4 border border-outline-variant bg-surface-container-lowest peer-checked:bg-primary peer-checked:border-primary transition-colors"></div>
+                        <span class="material-symbols-outlined absolute text-[12px] text-background opacity-0 peer-checked:opacity-100 font-bold transition-opacity">check</span>
+                    </div>
+                    <span class="font-label text-xs text-on-surface-variant uppercase tracking-wider group-hover/check:text-on-surface transition-colors">Maintain Link</span>
+                </label>
+                
+                <a href="#" class="font-label text-xs text-secondary hover:text-primary transition-colors uppercase tracking-wider hover:drop-shadow-[0_0_5px_rgba(255,45,120,0.8)]">Lost Key?</a>
+            </div>
+
+            <button type="submit" class="w-full mt-6 bg-primary/20 border border-primary text-primary px-8 py-3.5 font-label uppercase tracking-widest shadow-[inset_0_0_12px_rgba(255,45,120,0.2)] hover:shadow-[0_0_20px_rgba(255,45,120,0.5)] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                <span class="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">fingerprint</span>
+                AUTHENTICATE
+            </button>
+        </form>
+
+        <div class="mt-8 pt-4 border-t border-outline-variant/30 text-left">
+            <p class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest mb-3 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[12px]">info</span> Demo Credentials
+            </p>
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-body text-on-surface-variant/80 bg-surface-container-lowest/30 p-3 rounded border border-outline-variant/50">
+                <div class="flex flex-col"><span class="text-primary font-bold">DIR-001</span> director_auth</div>
+                <div class="flex flex-col text-right"><span class="text-on-surface text-[9px] uppercase font-label">Director</span></div>
+                <div class="flex flex-col"><span class="text-primary font-bold">ANA-492</span> analyst_auth</div>
+                <div class="flex flex-col text-right"><span class="text-on-surface text-[9px] uppercase font-label">Analyst</span></div>
+                <div class="flex flex-col"><span class="text-primary font-bold">OPS-773</span> operator_auth</div>
+                <div class="flex flex-col text-right"><span class="text-on-surface text-[9px] uppercase font-label">Operator</span></div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-center items-center gap-2">
+            <span class="material-symbols-outlined text-error text-[14px] animate-pulse">warning</span>
+            <span class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">Unauthorized access is heavily penalized.</span>
+        </div>
+    </div>
+</main>
+
+<style type="text/tailwindcss">
+    @layer utilities {
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+    }
+</style>
+</body></html>

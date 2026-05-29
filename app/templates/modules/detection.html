@@ -1,0 +1,246 @@
+{% extends "layout.html" %}
+{% block title %}Abandoned Object Detection{% endblock %}
+
+{% block head %}
+<style>
+    .badge-critical{background:rgba(255,45,120,.12);border:1px solid rgba(255,45,120,.5);color:#ff2d78}
+    .badge-high{background:rgba(255,224,74,.08);border:1px solid rgba(255,224,74,.4);color:#ffe04a}
+    .badge-medium{background:rgba(0,255,204,.08);border:1px solid rgba(0,255,204,.3);color:#00ffcc}
+    .badge-low{background:rgba(160,152,176,.08);border:1px solid rgba(160,152,176,.3);color:#a098b0}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:#111118}
+    ::-webkit-scrollbar-thumb{background:#302840;border-radius:2px}
+    ::-webkit-scrollbar-thumb:hover{background:#5a5068}
+    .alert-enter{animation:aEnter .3s ease forwards}
+    @keyframes aEnter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="mb-5 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+    <div>
+        <h1 class="font-headline text-3xl font-bold text-on-surface tracking-tight">Abandoned Object Detection</h1>
+        <p class="font-label text-xs text-on-surface-variant uppercase tracking-widest">YOLOv5n · Stationary-Mass Isolation · Alert Engine Integration</p>
+    </div>
+    <div class="flex gap-3">
+        <div class="bg-surface-container px-4 py-2 rounded border border-tertiary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">YOLO Model</span>
+            <span class="font-headline text-sm text-tertiary font-bold">YOLOv5nu</span>
+        </div>
+        <div class="bg-surface-container px-4 py-2 rounded border border-primary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Abandoned Alerts</span>
+            <span id="header-abandoned-count" class="font-headline text-sm text-primary font-bold">0</span>
+        </div>
+        <div class="bg-surface-container px-4 py-2 rounded border border-secondary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Conf. Threshold</span>
+            <span class="font-headline text-sm text-secondary font-bold">0.40</span>
+        </div>
+    </div>
+</header>
+
+<div class="grid gap-5" style="grid-template-columns:5fr 7fr;">
+    <!-- Left col -->
+    <div class="flex flex-col gap-4">
+        <!-- How it works -->
+        <div class="bg-surface-container rounded p-4 border border-tertiary/30">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-tertiary text-lg">info</span>
+                <h3 class="font-headline text-sm font-bold text-on-surface">Detection Pipeline</h3>
+            </div>
+            <ol class="flex flex-col gap-2 font-label text-xs text-on-surface-variant">
+                <li class="flex items-start gap-2">
+                    <span class="w-5 h-5 rounded-full bg-tertiary/20 border border-tertiary/50 flex items-center justify-center text-tertiary font-bold flex-shrink-0 text-[10px]">1</span>
+                    <span>YOLOv5n runs every <strong class="text-on-surface">10 frames</strong> at 320×240. Detects bags, vehicles, etc.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="w-5 h-5 rounded-full bg-tertiary/20 border border-tertiary/50 flex items-center justify-center text-tertiary font-bold flex-shrink-0 text-[10px]">2</span>
+                    <span>IoU + centroid tracker assigns <strong class="text-on-surface">Object IDs</strong>. Movement ≤20px = stationary.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="w-5 h-5 rounded-full bg-tertiary/20 border border-tertiary/50 flex items-center justify-center text-tertiary font-bold flex-shrink-0 text-[10px]">3</span>
+                    <span>Stationary for ≥<strong class="text-on-surface">30s</strong> triggers <strong class="text-primary">ABANDONED_OBJECT</strong> alert. Score = duration/60s.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="w-5 h-5 rounded-full bg-tertiary/20 border border-tertiary/50 flex items-center justify-center text-tertiary font-bold flex-shrink-0 text-[10px]">4</span>
+                    <span>Vehicles additionally <strong class="text-on-surface">boost anomaly score</strong> +1.0 in blended CNN-LSTM score.</span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Config -->
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-secondary text-lg">tune</span>
+                <h3 class="font-headline text-sm font-bold text-on-surface">Active Configuration</h3>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 font-label text-xs">
+                <span class="text-on-surface-variant">Model</span><span class="text-on-surface">YOLOv5nu</span>
+                <span class="text-on-surface-variant">Stationary Px Thr</span><span class="text-on-surface">20 px</span>
+                <span class="text-on-surface-variant">Time Threshold</span><span class="text-on-surface">30 seconds</span>
+                <span class="text-on-surface-variant">Confidence</span><span class="text-on-surface">0.40</span>
+                <span class="text-on-surface-variant">YOLO Cadence</span><span class="text-on-surface">Every 10 frames</span>
+                <span class="text-on-surface-variant">Input Resolution</span><span class="text-on-surface">320 × 240</span>
+                <span class="text-on-surface-variant">Debounce Window</span><span class="text-on-surface">30 seconds</span>
+                <span class="text-on-surface-variant">Score Normalize</span><span class="text-on-surface">Duration / 60s</span>
+            </div>
+        </div>
+
+        <!-- Target classes -->
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-tertiary text-lg">category</span>
+                <h3 class="font-headline text-sm font-bold text-on-surface">Target Classes</h3>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+                {% for cls in ['backpack','suitcase','handbag','bicycle','motorcycle','car','truck','bus','skateboard'] %}
+                <span class="font-label text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-container-highest border border-tertiary/30 text-tertiary rounded">{{ cls }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Severity counts -->
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-3">Severity Breakdown</h3>
+            <div class="grid grid-cols-4 gap-2">
+                <div class="text-center p-2 rounded badge-critical">
+                    <div class="font-headline text-xl font-bold" id="sev-critical">0</div>
+                    <div class="font-label text-[9px] mt-1">CRITICAL</div>
+                </div>
+                <div class="text-center p-2 rounded badge-high">
+                    <div class="font-headline text-xl font-bold" id="sev-high">0</div>
+                    <div class="font-label text-[9px] mt-1">HIGH</div>
+                </div>
+                <div class="text-center p-2 rounded badge-medium">
+                    <div class="font-headline text-xl font-bold" id="sev-medium">0</div>
+                    <div class="font-label text-[9px] mt-1">MEDIUM</div>
+                </div>
+                <div class="text-center p-2 rounded badge-low">
+                    <div class="font-headline text-xl font-bold" id="sev-low">0</div>
+                    <div class="font-label text-[9px] mt-1">LOW</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right col -->
+    <div class="flex flex-col gap-4">
+        <!-- Live YOLO detection stream -->
+        <div class="relative bg-surface-container-low rounded border border-tertiary/30 overflow-hidden" style="height:280px;">
+            <img id="det-stream" src="/api/stream"
+                 class="w-full h-full object-contain bg-black"
+                 onerror="this.style.display='none';document.getElementById('det-placeholder').style.display='flex';">
+            <div id="det-placeholder" class="absolute inset-0 flex items-center justify-center gap-3" style="display:none!important;">
+                <span class="material-symbols-outlined text-on-surface-variant text-4xl">android_fingerprint</span>
+                <p class="font-label text-xs text-on-surface-variant">Run pipeline to see detection</p>
+            </div>
+            <div class="absolute top-2 left-2 right-2 flex justify-between font-label text-[10px] text-tertiary z-10 pointer-events-none">
+                <span class="bg-surface-container-lowest/80 backdrop-blur px-2 py-0.5 rounded">CAM-07G · YOLO ACTIVE · 320×240</span>
+                <span id="det-time" class="bg-surface-container-lowest/80 backdrop-blur px-2 py-0.5 rounded">--:--:--</span>
+            </div>
+            <div class="absolute bottom-2 left-2 font-label text-[10px] text-secondary bg-surface-container-lowest/80 backdrop-blur px-2 py-0.5 rounded pointer-events-none">
+                YOLO every 10 frames · IoU+centroid tracking
+            </div>
+        </div>
+
+        <!-- Abandoned Object Alert Log -->
+        <div class="bg-surface-container rounded p-4 border border-primary/30 flex flex-col flex-1" style="min-height:0;">
+            <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-lg">shopping_bag</span>
+                    <h3 class="font-headline text-sm font-bold text-primary">Abandoned Object Alert Log</h3>
+                </div>
+                <span class="font-label text-[10px] text-on-surface-variant">LIVE · auto-refresh</span>
+            </div>
+            <div id="abandoned-log" class="flex flex-col gap-2 overflow-y-auto flex-1" style="min-height:0; max-height:340px;">
+                <div class="text-center py-8 text-on-surface-variant font-label text-xs italic">
+                    Awaiting abandoned object events from pipeline...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+setInterval(()=>{ document.getElementById('det-time').innerText=new Date().toTimeString().slice(0,8); }, 1000);
+
+const socket = io();
+let abandonedCache = [];
+
+async function initData() {
+    try {
+        const data = await fetch('/api/anomalies?limit=100').then(r=>r.json());
+        abandonedCache = data.filter(a=>a.alert_type==='ABANDONED_OBJECT');
+        renderAlerts();
+    } catch(e) {}
+}
+
+socket.on('new_alert', (alert) => {
+    if (alert.alert_type === 'ABANDONED_OBJECT') {
+        abandonedCache.unshift(alert);
+        if (abandonedCache.length > 100) abandonedCache.pop();
+        renderAlerts();
+    }
+});
+
+function renderAlerts() {
+    document.getElementById('header-abandoned-count').innerText = abandonedCache.length;
+    const sevC = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+    abandonedCache.forEach(a=>{ if(sevC[a.severity]!==undefined) sevC[a.severity]++; });
+    document.getElementById('sev-critical').innerText = sevC.CRITICAL;
+    document.getElementById('sev-high').innerText     = sevC.HIGH;
+    document.getElementById('sev-medium').innerText   = sevC.MEDIUM;
+    document.getElementById('sev-low').innerText      = sevC.LOW;
+
+    const log = document.getElementById('abandoned-log');
+    if (!abandonedCache.length) {
+        log.innerHTML = `<div class="text-center py-8 text-on-surface-variant font-label text-xs italic">
+            No abandoned object events detected yet.<br><span class="text-[10px] opacity-60">Run pipeline to begin detection.</span></div>`;
+        return;
+    }
+
+    log.innerHTML = abandonedCache.map(a => {
+        const sevClass = {
+            CRITICAL:'border-l-primary text-primary',
+            HIGH:'border-l-tertiary text-tertiary',
+            MEDIUM:'border-l-secondary text-secondary',
+            LOW:'border-l-on-surface-variant text-on-surface-variant'
+        }[a.severity] || 'border-l-outline text-on-surface';
+
+        const snap = a.snapshot_b64
+            ? `<div class="mt-2 rounded overflow-hidden border border-outline-variant/30">
+                <img src="data:image/jpeg;base64,${a.snapshot_b64}"
+                     class="w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                     style="max-height:120px;"
+                     onclick="window.open('data:image/jpeg;base64,${a.snapshot_b64}','_blank')"
+                     title="Click to open full image">`
+            + `<div class="bg-surface-container-highest px-2 py-1 font-label text-[9px] text-on-surface-variant">
+                    Detection snapshot · click to expand</div></div>`
+            : '<div class="font-label text-[9px] text-on-surface-variant italic mt-2">No snapshot captured</div>';
+
+        return `<div class="alert-enter rounded p-3 border-l-2 ${sevClass} bg-surface-container-high transition-all hover:translate-x-0.5">
+            <div class="flex justify-between items-start mb-1">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">shopping_bag</span>
+                    <span class="font-headline text-xs font-bold">ABANDONED OBJECT</span>
+                </div>
+                <div class="text-right flex-shrink-0 ml-2">
+                    <span class="font-label text-[10px] block">${(a.timestamp||'').slice(11,19)}</span>
+                    <span class="font-label text-[9px] opacity-70">SEV: ${a.severity}</span>
+                </div>
+            </div>
+            <div class="font-label text-[10px] text-on-surface-variant">${a.details||'—'}</div>
+            <div class="mt-2 flex items-center gap-2">
+                <span class="font-label text-[10px] text-on-surface-variant">Risk:</span>
+                <div class="flex-1 h-1 bg-surface-container-lowest rounded overflow-hidden">
+                    <div class="h-full bg-current rounded" style="width:${Math.min(100,(a.anomaly_score||0)*100)}%"></div>
+                </div>
+                <span class="font-label text-[10px] font-bold">${((a.anomaly_score||0)*100).toFixed(0)}%</span>
+            </div>
+            ${snap}
+        </div>`;
+    }).join('');
+}
+
+initData();
+</script>
+{% endblock %}

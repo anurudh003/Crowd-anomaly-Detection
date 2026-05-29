@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+{# Redirect analytics page to heatmaps (merged module) #}
+<script>window.location.replace("{{ url_for('heatmaps.index') }}");</script>
+<div class="flex items-center justify-center h-64">
+    <p class="font-label text-on-surface-variant text-xs uppercase tracking-widest">Redirecting to Density Visualization &amp; Analytics...</p>
+</div>
+{% endblock %}

@@ -1,0 +1,360 @@
+{% extends "layout.html" %}
+{% block title %}Density Visualization & Analytics{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    .tab-active { color:#00ffcc; border-bottom:2px solid #00ffcc; text-shadow:0 0 8px #00ffcc; }
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:#111118}
+    ::-webkit-scrollbar-thumb{background:#302840;border-radius:2px}
+    ::-webkit-scrollbar-thumb:hover{background:#5a5068}
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="mb-4 flex flex-col md:flex-row md:justify-between md:items-end gap-3">
+    <div>
+        <h1 class="font-headline text-3xl font-bold text-on-surface tracking-tight">Density &amp; Analytics</h1>
+        <p class="font-label text-xs text-on-surface-variant uppercase tracking-widest">Live Crowd Pressure · Anomaly Trends · Historical Metrics</p>
+    </div>
+    <div class="flex gap-3">
+        <div class="bg-surface-container px-3 py-1.5 rounded border border-secondary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Peak Density</span>
+            <span id="header-peak-density" class="font-headline text-sm text-secondary font-bold">—</span>
+        </div>
+        <div class="bg-surface-container px-3 py-1.5 rounded border border-primary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Anomalies</span>
+            <span id="header-total-anomalies" class="font-headline text-sm text-primary font-bold">—</span>
+        </div>
+        <div class="bg-surface-container px-3 py-1.5 rounded border border-tertiary/30 flex flex-col items-end">
+            <span class="font-label text-[10px] text-on-surface-variant uppercase">Overcrowding</span>
+            <span id="header-overcrowding" class="font-headline text-sm text-tertiary font-bold">—</span>
+        </div>
+    </div>
+</header>
+
+<div class="flex gap-6 border-b border-outline-variant/30 mb-5 font-label text-xs uppercase tracking-widest">
+    <button id="tab-heatmap" onclick="switchTab('heatmap')" class="pb-2 tab-active transition-all">Heatmap View</button>
+    <button id="tab-analytics" onclick="switchTab('analytics')" class="pb-2 text-on-surface-variant hover:text-secondary transition-all">Score Analytics</button>
+    <button id="tab-history" onclick="switchTab('history')" class="pb-2 text-on-surface-variant hover:text-secondary transition-all">Alert History</button>
+</div>
+
+<!-- ══ HEATMAP TAB ══ -->
+<div id="panel-heatmap">
+    <div class="grid gap-5" style="grid-template-columns:2fr 1fr; height:calc(100vh - 310px);">
+        <!-- Live heatmap stream -->
+        <div class="relative border border-primary/30 bg-surface-container-high rounded overflow-hidden">
+            <img id="heatmap-img" src="/api/heatmap_stream"
+                 class="w-full h-full object-cover"
+                 onerror="this.style.display='none'; document.getElementById('hm-placeholder').style.display='flex';">
+            <div id="hm-placeholder" class="absolute inset-0 bg-surface-container-lowest flex flex-col items-center justify-center gap-3" style="display:none!important;">
+                <!-- CSS thermal overlay while no stream -->
+                <div class="absolute inset-0" style="background:radial-gradient(circle at 28% 38%,rgba(255,45,120,.6) 0%,rgba(255,224,74,.4) 22%,rgba(0,255,204,.15) 42%,transparent 58%),radial-gradient(circle at 72% 62%,rgba(255,45,120,.5) 0%,rgba(255,224,74,.35) 18%,rgba(0,255,204,.1) 38%,transparent 54%);filter:blur(22px);animation:thermalShift 8s ease-in-out infinite alternate;"></div>
+                <style>@keyframes thermalShift{from{opacity:.7;transform:scale(1)}to{opacity:1;transform:scale(1.05)}}</style>
+                <div class="relative z-10 text-center">
+                    <span class="material-symbols-outlined text-on-surface-variant text-4xl">thermostat</span>
+                    <p class="font-label text-xs text-on-surface-variant mt-2 uppercase tracking-widest">Run pipeline to see live heatmap</p>
+                </div>
+            </div>
+            <div class="absolute inset-0 pointer-events-none p-3 flex flex-col justify-between">
+                <div class="flex justify-between font-label text-[10px] text-secondary">
+                    <span class="bg-surface-container-lowest/70 backdrop-blur px-2 py-0.5 rounded">UCSD · MOG2 · JET COLORMAP</span>
+                    <span id="heatmap-time" class="bg-surface-container-lowest/70 backdrop-blur px-2 py-0.5 rounded">--:--:--</span>
+                </div>
+                <div class="absolute bottom-3 left-3 px-3 py-2 bg-surface-container-lowest/90 backdrop-blur border border-primary/20 rounded">
+                    <h3 class="font-label text-[9px] text-on-surface-variant mb-1 tracking-widest">DENSITY INDEX</h3>
+                    <div class="h-2 w-36 bg-gradient-to-r from-secondary via-tertiary to-primary rounded-full mb-1"></div>
+                    <div class="flex justify-between font-label text-[9px] text-on-surface-variant"><span>LOW</span><span>CRITICAL</span></div>
+                </div>
+                <div class="absolute bottom-3 right-3 px-3 py-2 bg-surface-container-lowest/90 backdrop-blur border border-secondary/20 rounded text-right">
+                    <span class="font-label text-[9px] text-on-surface-variant block">DENSITY SCORE</span>
+                    <span id="heatmap-density" class="font-headline text-xl font-bold text-secondary">0.000</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar charts -->
+        <div class="flex flex-col gap-4 overflow-y-auto">
+            <div class="bg-surface-container rounded p-3 border border-secondary/30">
+                <h3 class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Density Over Time</h3>
+                <canvas id="density-chart-live" height="90"></canvas>
+            </div>
+            <div class="bg-surface-container rounded p-3 border border-primary/30">
+                <h3 class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Anomaly Score Timeline</h3>
+                <canvas id="anomaly-chart-live" height="90"></canvas>
+            </div>
+            <div class="bg-surface-container rounded p-3 border border-tertiary/30">
+                <h3 class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">FPS Throughput</h3>
+                <canvas id="fps-chart-live" height="80"></canvas>
+            </div>
+            <div class="bg-surface-container rounded p-3 border border-outline-variant/30 flex-1">
+                <h3 class="font-label text-[10px] uppercase tracking-widest text-primary mb-2">Recent Alerts</h3>
+                <div id="heatmap-alert-log" class="flex flex-col gap-1.5 overflow-y-auto max-h-48">
+                    <div class="text-[10px] text-on-surface-variant italic text-center py-3">Awaiting alerts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ ANALYTICS TAB ══ -->
+<div id="panel-analytics" class="hidden">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase mb-1">Avg Anomaly</h3>
+            <div id="avg-anomaly" class="font-headline text-3xl font-bold text-primary">—</div>
+        </div>
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase mb-1">Avg Density</h3>
+            <div id="avg-density" class="font-headline text-3xl font-bold text-secondary">—</div>
+        </div>
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase mb-1">Avg FPS</h3>
+            <div id="avg-fps" class="font-headline text-3xl font-bold text-tertiary">—</div>
+        </div>
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase mb-1">Metrics Logged</h3>
+            <div id="total-metrics" class="font-headline text-3xl font-bold text-on-surface">—</div>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-3">Anomaly vs Density Correlation</h3>
+            <canvas id="scatter-chart" height="160"></canvas>
+            <div class="flex gap-4 mt-2 font-label text-[10px]">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-primary rounded inline-block"></span>Anomaly</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-secondary rounded inline-block"></span>Density</span>
+            </div>
+        </div>
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-3">Alert Severity Distribution</h3>
+            <canvas id="severity-donut" height="160"></canvas>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-3">Alert Type Breakdown</h3>
+            <canvas id="alert-type-chart" height="140"></canvas>
+        </div>
+        <div class="bg-surface-container rounded p-4 border border-outline-variant/30">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest mb-3">Score Distribution Histogram</h3>
+            <canvas id="score-histogram" height="140"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ══ HISTORY TAB ══ -->
+<div id="panel-history" class="hidden">
+    <div class="bg-surface-container rounded p-5 border border-outline-variant/30">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-label text-xs text-on-surface-variant uppercase tracking-widest">All Recorded Alerts</h3>
+            <span id="total-alert-count" class="font-label text-[10px] text-primary">0 total</span>
+        </div>
+        <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-380px)]">
+            <table class="w-full font-label text-xs">
+                <thead class="sticky top-0 bg-surface-container z-10">
+                    <tr class="border-b border-outline-variant/30">
+                        <th class="text-left text-on-surface-variant py-2 pr-4">TIME</th>
+                        <th class="text-left text-on-surface-variant py-2 pr-4">TYPE</th>
+                        <th class="text-left text-on-surface-variant py-2 pr-4">SEV</th>
+                        <th class="text-right text-on-surface-variant py-2 pr-4">SCORE</th>
+                        <th class="text-left text-on-surface-variant py-2 pr-4">DETAILS</th>
+                        <th class="text-center text-on-surface-variant py-2">IMG</th>
+                    </tr>
+                </thead>
+                <tbody id="analytics-alerts-table" class="text-on-surface">
+                    <tr><td colspan="6" class="py-6 text-center text-on-surface-variant italic">Awaiting alert data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Chart instances ──
+const chartOpts = (label, color) => ({
+    type: 'line',
+    data: { labels: Array(30).fill(''), datasets: [{ label, data: Array(30).fill(0),
+        borderColor: color, backgroundColor: color+'22', borderWidth: 1.5,
+        pointRadius: 0, fill: true, tension: 0.4 }] },
+    options: { animation: false, responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { display: false, min: 0 } } }
+});
+
+const densityChart = new Chart(document.getElementById('density-chart-live'), chartOpts('Density','#00ffcc'));
+const anomalyChart = new Chart(document.getElementById('anomaly-chart-live'), chartOpts('Anomaly','#ff2d78'));
+const fpsChart     = new Chart(document.getElementById('fps-chart-live'), chartOpts('FPS','#ffe04a'));
+
+let scatterChart, severityDonut, alertTypeChart, scoreHistogram;
+let metricsCache = [], alertsCache = [], currentThreshold = 0.31;
+
+function pushChart(chart, val) {
+    chart.data.datasets[0].data.push(val);
+    chart.data.datasets[0].data.shift();
+    chart.update('none');
+}
+
+// ── Socket.IO ──
+const socket = io();
+socket.on('metrics_update', (d) => {
+    document.getElementById('heatmap-density').innerText = (d.density_score||0).toFixed(3);
+    if (d.current_threshold) currentThreshold = d.current_threshold;
+    pushChart(densityChart, d.density_score||0);
+    pushChart(anomalyChart, d.anomaly_score||0);
+    pushChart(fpsChart, d.fps||0);
+    metricsCache.unshift(d);
+    if (metricsCache.length > 200) metricsCache.pop();
+    updateHeaderStats();
+});
+socket.on('new_alert', (a) => {
+    alertsCache.unshift(a);
+    if (alertsCache.length > 200) alertsCache.pop();
+    updateHeaderStats();
+    renderAlertLog();
+    if (!document.getElementById('panel-analytics').classList.contains('hidden')) renderAnalytics();
+    if (!document.getElementById('panel-history').classList.contains('hidden')) renderHistory();
+});
+
+setInterval(() => {
+    document.getElementById('heatmap-time').innerText = new Date().toTimeString().slice(0,8);
+}, 1000);
+
+async function initData() {
+    try {
+        const [m, a] = await Promise.all([
+            fetch('/api/metrics?limit=200').then(r=>r.json()),
+            fetch('/api/anomalies?limit=200').then(r=>r.json())
+        ]);
+        metricsCache = m; alertsCache = a;
+        updateHeaderStats();
+        renderAlertLog();
+        if (!document.getElementById('panel-analytics').classList.contains('hidden')) renderAnalytics();
+        if (!document.getElementById('panel-history').classList.contains('hidden')) renderHistory();
+    } catch(e) {}
+}
+
+function updateHeaderStats() {
+    const peak = metricsCache.length ? Math.max(...metricsCache.map(m=>m.density_score||0)) : 0;
+    document.getElementById('header-peak-density').innerText = peak.toFixed(3);
+    document.getElementById('header-total-anomalies').innerText = alertsCache.filter(a=>a.alert_type==='ANOMALY').length;
+    document.getElementById('header-overcrowding').innerText = alertsCache.filter(a=>a.alert_type==='OVERCROWDING').length;
+}
+
+function renderAlertLog() {
+    const log = document.getElementById('heatmap-alert-log');
+    const recent = alertsCache.slice(0,15);
+    if (!recent.length) { log.innerHTML = '<div class="text-[10px] text-on-surface-variant italic text-center py-3">No alerts yet.</div>'; return; }
+    log.innerHTML = recent.map(a => {
+        const col = a.alert_type==='ANOMALY'?'primary':a.alert_type==='ABANDONED_OBJECT'?'secondary':'tertiary';
+        return `<div class="bg-surface-container-high rounded p-2 border-l-2 border-l-${col}">
+            <div class="flex justify-between font-label text-[10px] mb-0.5">
+                <span class="text-${col}">${a.alert_type}</span>
+                <span class="text-on-surface-variant">${(a.timestamp||'').slice(11,19)}</span>
+            </div>
+            <div class="font-label text-[10px] text-on-surface-variant">${a.details||'—'}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderAnalytics() {
+    const m = metricsCache, a = alertsCache;
+    if (m.length) {
+        document.getElementById('avg-anomaly').innerText = (m.reduce((s,x)=>s+(x.anomaly_score||0),0)/m.length).toFixed(3);
+        document.getElementById('avg-density').innerText  = (m.reduce((s,x)=>s+(x.density_score||0),0)/m.length).toFixed(3);
+        document.getElementById('avg-fps').innerText      = (m.reduce((s,x)=>s+(x.fps||0),0)/m.length).toFixed(1);
+        document.getElementById('total-metrics').innerText = m.length;
+    }
+
+    // Scatter / dual bar
+    const last20 = [...m].reverse().slice(-20);
+    if (scatterChart) scatterChart.destroy();
+    scatterChart = new Chart(document.getElementById('scatter-chart'), {
+        type:'bar',
+        data: { labels: last20.map((_,i)=>i+1),
+            datasets: [
+                { label:'Anomaly', data: last20.map(x=>x.anomaly_score||0), backgroundColor:'rgba(255,45,120,0.5)', borderColor:'#ff2d78', borderWidth:1 },
+                { label:'Density', data: last20.map(x=>(x.density_score||0)), backgroundColor:'rgba(0,255,204,0.35)', borderColor:'#00ffcc', borderWidth:1 }
+            ]},
+        options:{ responsive:true, animation:false, plugins:{ legend:{ labels:{ color:'#a098b0', font:{size:10} } } },
+            scales:{ x:{ ticks:{color:'#a098b0',font:{size:9}}, grid:{color:'#1e1e30'} },
+                     y:{ ticks:{color:'#a098b0',font:{size:9}}, grid:{color:'#1e1e30'}, min:0, max:1 } } }
+    });
+
+    // Severity donut
+    const sevC = {LOW:0,MEDIUM:0,HIGH:0,CRITICAL:0};
+    a.forEach(x=>{ if(sevC[x.severity]!==undefined) sevC[x.severity]++; });
+    if (severityDonut) severityDonut.destroy();
+    severityDonut = new Chart(document.getElementById('severity-donut'), {
+        type:'doughnut',
+        data:{ labels:Object.keys(sevC), datasets:[{ data:Object.values(sevC),
+            backgroundColor:['rgba(0,255,204,0.6)','rgba(255,224,74,0.6)','rgba(255,45,120,0.5)','rgba(255,45,120,0.9)'],
+            borderColor:['#00ffcc','#ffe04a','#ff2d78','#ff2d78'], borderWidth:1.5 }]},
+        options:{ responsive:true, animation:false, cutout:'65%',
+            plugins:{ legend:{ position:'bottom', labels:{ color:'#a098b0', font:{size:10}, padding:8 } } } }
+    });
+
+    // Alert type bar
+    const typeC = {ANOMALY:0, OVERCROWDING:0, ABANDONED_OBJECT:0};
+    a.forEach(x=>{ if(typeC[x.alert_type]!==undefined) typeC[x.alert_type]++; });
+    if (alertTypeChart) alertTypeChart.destroy();
+    alertTypeChart = new Chart(document.getElementById('alert-type-chart'), {
+        type:'bar',
+        data:{ labels:['ANOMALY','OVERCROWDING','ABANDONED'],
+            datasets:[{ data:Object.values(typeC),
+                backgroundColor:['rgba(255,45,120,0.5)','rgba(255,224,74,0.5)','rgba(0,255,204,0.4)'],
+                borderColor:['#ff2d78','#ffe04a','#00ffcc'], borderWidth:1.5 }]},
+        options:{ responsive:true, animation:false, plugins:{ legend:{display:false} },
+            scales:{ x:{ ticks:{color:'#a098b0',font:{size:9}}, grid:{color:'#1e1e30'} },
+                     y:{ ticks:{color:'#a098b0',font:{size:9}}, grid:{color:'#1e1e30'}, beginAtZero:true } } }
+    });
+
+    // Score histogram
+    const bins = Array(10).fill(0);
+    a.forEach(x=>{ const b=Math.min(9,Math.floor((x.anomaly_score||0)*10)); bins[b]++; });
+    if (scoreHistogram) scoreHistogram.destroy();
+    scoreHistogram = new Chart(document.getElementById('score-histogram'), {
+        type:'bar',
+        data:{ labels:['0-.1','.1-.2','.2-.3','.3-.4','.4-.5','.5-.6','.6-.7','.7-.8','.8-.9','.9-1'],
+            datasets:[{ label:'Alerts', data:bins,
+                backgroundColor: bins.map((_,i)=>i<3?'rgba(0,255,204,0.4)':i<6?'rgba(255,224,74,0.4)':'rgba(255,45,120,0.5)'),
+                borderColor: bins.map((_,i)=>i<3?'#00ffcc':i<6?'#ffe04a':'#ff2d78'), borderWidth:1 }]},
+        options:{ responsive:true, animation:false, plugins:{ legend:{display:false} },
+            scales:{ x:{ ticks:{color:'#a098b0',font:{size:8}}, grid:{color:'#1e1e30'} },
+                     y:{ ticks:{color:'#a098b0',font:{size:9}}, grid:{color:'#1e1e30'}, beginAtZero:true } } }
+    });
+}
+
+function renderHistory() {
+    const a = alertsCache;
+    document.getElementById('total-alert-count').innerText = a.length + ' total';
+    const sevBadge = {LOW:'text-secondary',MEDIUM:'text-tertiary',HIGH:'text-primary',CRITICAL:'text-primary font-bold animate-pulse'};
+    document.getElementById('analytics-alerts-table').innerHTML = a.length ? a.map(x=>{
+        const col = x.alert_type==='ANOMALY'?'text-primary':x.alert_type==='ABANDONED_OBJECT'?'text-secondary':'text-tertiary';
+        const snap = x.snapshot_b64
+            ? `<img src="data:image/jpeg;base64,${x.snapshot_b64}" class="w-14 h-10 object-cover rounded border border-outline-variant/30 cursor-pointer"
+                onclick="window.open('data:image/jpeg;base64,${x.snapshot_b64}','_blank')" title="Click to expand">`
+            : '<span class="text-on-surface-variant text-[10px]">—</span>';
+        return `<tr class="border-b border-outline-variant/20 hover:bg-surface-container-high/40 transition-colors">
+            <td class="py-1.5 pr-4 text-on-surface-variant">${(x.timestamp||'').slice(11,19)||'—'}</td>
+            <td class="py-1.5 pr-4 ${col}">${x.alert_type}</td>
+            <td class="py-1.5 pr-4 ${sevBadge[x.severity]||'text-on-surface'}">${x.severity}</td>
+            <td class="py-1.5 pr-4 text-right text-on-surface">${(x.anomaly_score||0).toFixed(3)}</td>
+            <td class="py-1.5 pr-4 text-on-surface-variant text-[10px]">${x.details||'—'}</td>
+            <td class="py-1.5 text-center">${snap}</td>
+        </tr>`;
+    }).join('') : `<tr><td colspan="6" class="py-6 text-center text-on-surface-variant italic">No alerts recorded yet.</td></tr>`;
+}
+
+function switchTab(tab) {
+    ['heatmap','analytics','history'].forEach(t=>{
+        document.getElementById('panel-'+t).classList.toggle('hidden', t!==tab);
+        document.getElementById('tab-'+t).className = 'pb-2 transition-all ' + (t===tab ? 'tab-active' : 'text-on-surface-variant hover:text-secondary');
+    });
+    if (tab==='analytics') renderAnalytics();
+    if (tab==='history') renderHistory();
+}
+
+initData();
+</script>
+{% endblock %}

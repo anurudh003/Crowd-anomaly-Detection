@@ -1,0 +1,87 @@
+{
+  "project": "Crowd Anomaly Detection",
+  "version": "2.0-surgical",
+  "dataset": {
+    "name": "UCSD Pedestrian",
+    "raw_path": "data/raw",
+    "processed_path": "data/processed",
+    "sequences_path": "data/sequences",
+    "frame_width": 160,
+    "frame_height": 120,
+    "sequence_length": 8,
+    "stride": 4
+  },
+  "model": {
+    "architecture": "CNN-LSTM-Autoencoder",
+    "backbone": "MobileNetV2",
+    "pretrained": true,
+    "latent_dim": 512,
+    "lstm_hidden": 256,
+    "lstm_layers": 2,
+    "dropout": 0.3,
+    "model_path": "models/anomaly_detector.pth"
+  },
+  "training": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "scheduler": "CosineAnnealingLR",
+    "early_stopping_patience": 10
+  },
+  "inference": {
+    "anomaly_threshold": 0.31,
+    "fps_target": 5,
+    "yolo_every_n_frames": 10,
+    "device": "cpu",
+    "map_location": "cpu",
+    "yolo_boost_weights": {
+      "bicycle": 1.0,
+      "motorcycle": 1.0,
+      "car": 1.0,
+      "truck": 1.0,
+      "bus": 1.0,
+      "skateboard": 1.0
+    }
+  },
+
+  "heatmap": {
+    "history_length": 30,
+    "morphology_kernel": 5,
+    "gaussian_blur_kernel": 15,
+    "colormap": "JET"
+  },
+  "object_tracking": {
+    "model": "yolov5n",
+    "stationary_pixel_threshold": 20,
+    "stationary_time_seconds": 3,
+    "confidence_threshold": 0.4,
+    "target_classes": [
+      "backpack",
+      "suitcase",
+      "handbag",
+      "bicycle",
+      "motorcycle",
+      "truck",
+      "bus",
+      "car",
+      "skateboard"
+    ]
+  },
+  "alerts": {
+    "debounce_seconds": 30,
+    "density_crowd_threshold": 0.75,
+    "severity_levels": [
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "CRITICAL"
+    ],
+    "log_path": "logs/alerts.db"
+  },
+  "dashboard": {
+    "host": "0.0.0.0",
+    "port": 5001,
+    "debug": true
+  }
+}

@@ -1,0 +1,384 @@
+{% extends "layout.html" %}
+{% block title %}Live Monitoring{% endblock %}
+
+{% block head %}
+<style>
+    .neon-text-primary { text-shadow: 0 0 8px rgba(255,45,120,0.8); }
+    .neon-text-secondary { text-shadow: 0 0 8px rgba(0,255,204,0.8); }
+    .neon-border-primary { border: 1px solid rgba(255,45,120,0.5); box-shadow: inset 0 0 12px rgba(255,45,120,0.1); }
+    .neon-border-secondary { border: 1px solid rgba(0,255,204,0.5); box-shadow: inset 0 0 12px rgba(0,255,204,0.1); }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111118; }
+    ::-webkit-scrollbar-thumb { background: #302840; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5a5068; }
+    .alert-card { transition: all 0.25s ease; }
+    .alert-card:hover { transform: translateX(3px); }
+    .alert-entering { animation: slideIn 0.3s ease forwards; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+    .hw-bar { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+    #event-log { overflow-y: auto; overflow-x: hidden; }
+    #event-log::-webkit-scrollbar { width: 4px; }
+    #event-log::-webkit-scrollbar-thumb { background: #302840; border-radius: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns: 5fr 4fr 3fr; gap:1.5rem; height:calc(100vh - 100px); overflow:hidden;">
+
+    <!-- ── LEFT: Live Feed ── -->
+    <div style="display:flex; flex-direction:column; gap:1rem; min-height:0;">
+        <div class="flex justify-between items-end border-b border-surface-variant pb-2 flex-shrink-0">
+            <h2 class="font-headline text-lg font-bold text-on-surface">LIVE FEED
+                <span id="rec-dot" class="text-primary neon-text-primary text-sm ml-2 animate-pulse">● REC</span>
+            </h2>
+            <span class="font-label text-xs text-on-surface-variant tracking-widest">CAM-SECTOR-7G</span>
+        </div>
+        <div class="relative flex-1 bg-surface-container rounded border border-outline-variant overflow-hidden" style="min-height:0;">
+            <img id="live-stream" src="/api/stream"
+                 class="absolute inset-0 w-full h-full object-cover"
+                 onerror="this.style.display='none'; document.getElementById('feed-placeholder').style.display='flex';">
+            <div id="feed-placeholder" class="absolute inset-0 bg-surface-container-high flex flex-col items-center justify-center gap-3" style="display:none!important;">
+                <span class="material-symbols-outlined text-on-surface-variant text-5xl">videocam_off</span>
+                <p class="font-label text-xs text-on-surface-variant uppercase tracking-widest">No active feed — upload video in Performance</p>
+            </div>
+            <!-- HUD overlays -->
+            <div class="absolute inset-0 pointer-events-none p-3 flex flex-col justify-between">
+                <div class="flex justify-between font-label text-[10px] text-secondary drop-shadow-md">
+                    <span id="sys-time" class="bg-surface-container-lowest/70 backdrop-blur px-2 py-0.5 rounded">SYS_TIME: --:--:--</span>
+                    <span id="anomaly-badge" class="px-2 py-0.5 rounded font-bold bg-surface-container-lowest/70 backdrop-blur text-secondary">NORMAL</span>
+                </div>
+                <div class="w-full">
+                    <div class="flex justify-between font-label text-[10px] text-on-surface-variant mb-1">
+                        <span>PIPELINE PROGRESS</span>
+                        <span id="scan-pct" class="text-secondary">0%</span>
+                    </div>
+                    <div class="h-1 bg-surface-variant w-full overflow-hidden rounded">
+                        <div id="scan-bar" class="h-full bg-secondary shadow-[0_0_8px_#00ffcc] w-0 transition-all duration-500 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Feed Stats -->
+        <div class="grid grid-cols-4 gap-2 font-label text-xs flex-shrink-0">
+            <div class="bg-surface-container p-2 rounded border border-outline-variant/50 text-center">
+                <div class="text-on-surface-variant text-[10px] mb-1">ANOMALY</div>
+                <div id="stat-anomaly" class="text-on-surface font-bold text-sm">0.000</div>
+            </div>
+            <div class="bg-surface-container p-2 rounded border border-outline-variant/50 text-center">
+                <div class="text-on-surface-variant text-[10px] mb-1">DENSITY</div>
+                <div id="stat-density" class="text-on-surface font-bold text-sm">0.000</div>
+            </div>
+            <div class="bg-surface-container p-2 rounded border border-outline-variant/50 text-center">
+                <div class="text-on-surface-variant text-[10px] mb-1">FPS</div>
+                <div id="live-fps" class="text-secondary font-bold text-sm">0.0</div>
+            </div>
+            <div class="bg-surface-container p-2 rounded border border-outline-variant/50 text-center">
+                <div class="text-on-surface-variant text-[10px] mb-1">THRESHOLD</div>
+                <div id="stat-threshold" class="text-tertiary font-bold text-sm">0.31</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── CENTER: Alert Engine ── -->
+    <div style="display:flex; flex-direction:column; gap:1rem; border-left:1px solid #1e1e30; border-right:1px solid #1e1e30; padding:0 1.25rem; min-height:0; overflow:hidden;">
+        <div class="flex justify-between items-center border-b border-surface-variant pb-2 flex-shrink-0">
+            <h2 class="font-headline text-lg font-bold text-on-surface">ALERT ENGINE</h2>
+            <div class="flex items-center gap-2">
+                <span id="active-alerts-count" class="font-label text-xs text-primary neon-text-primary tracking-widest animate-pulse">0 ACTIVE</span>
+                <button onclick="dismissAllAlerts()" id="dismiss-all-btn"
+                    class="hidden font-label text-[10px] border border-primary/40 text-primary/70 px-2 py-0.5 rounded hover:bg-primary/10 transition-all">
+                    CLEAR ALL
+                </button>
+            </div>
+        </div>
+        <div id="event-log" class="flex-1 pr-1 flex flex-col gap-2" style="overflow-y:auto; min-height:0;">
+            <div class="text-center py-8 text-on-surface-variant font-label text-xs italic">
+                System initialized. Awaiting telemetry...
+            </div>
+        </div>
+    </div>
+
+    <!-- ── RIGHT: Telemetry ── -->
+    <div style="display:flex; flex-direction:column; gap:0.75rem; min-height:0; overflow-y:auto;">
+        <div class="flex justify-between items-end border-b border-surface-variant pb-2 flex-shrink-0">
+            <h2 class="font-headline text-lg font-bold text-on-surface">TELEMETRY</h2>
+            <span class="font-label text-xs text-secondary tracking-widest">LIVE</span>
+        </div>
+
+        <!-- Density sparkline -->
+        <div class="bg-surface-container rounded p-3 border border-secondary/30 flex-shrink-0">
+            <h3 class="font-label text-[10px] text-on-surface-variant mb-2 uppercase tracking-widest">CROWD DENSITY</h3>
+            <div id="density-bars" class="h-20 w-full bg-surface-variant/30 rounded flex items-end p-1 gap-0.5 relative overflow-hidden"></div>
+            <div class="flex justify-between mt-1 font-label text-[9px] text-on-surface-variant">
+                <span>OLDER</span><span>LATEST</span>
+            </div>
+        </div>
+
+        <!-- Anomaly sparkline -->
+        <div class="bg-surface-container rounded p-3 border border-primary/30 flex-shrink-0">
+            <h3 class="font-label text-[10px] text-on-surface-variant mb-2 uppercase tracking-widest">ANOMALY SCORE</h3>
+            <div id="anomaly-bars" class="h-20 w-full bg-surface-variant/30 rounded flex items-end p-1 gap-0.5 relative overflow-hidden"></div>
+            <div class="flex justify-between mt-1 font-label text-[9px] text-on-surface-variant">
+                <span>OLDER</span><span id="thr-label" class="text-primary">THR: 0.31</span><span>LATEST</span>
+            </div>
+        </div>
+
+        <!-- Live Perf KPIs -->
+        <div class="bg-surface-container rounded p-3 border border-outline-variant flex-shrink-0 grid grid-cols-2 gap-3">
+            <div>
+                <h3 class="font-label text-[10px] text-on-surface-variant mb-1">LATENCY</h3>
+                <div id="live-latency" class="font-headline text-2xl font-bold text-secondary neon-text-secondary">0<span class="text-xs">ms</span></div>
+            </div>
+            <div>
+                <h3 class="font-label text-[10px] text-on-surface-variant mb-1">MOTION</h3>
+                <div id="live-motion" class="font-headline text-2xl font-bold text-tertiary">0.00</div>
+            </div>
+        </div>
+
+        <!-- Hardware bars -->
+        <div class="bg-surface-container-high rounded p-3 border border-outline-variant flex flex-col gap-3 flex-shrink-0">
+            <h3 class="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">HARDWARE</h3>
+            <div>
+                <div class="flex justify-between font-label text-[10px] mb-1">
+                    <span class="text-on-surface">CPU</span>
+                    <span class="text-tertiary" id="cpu-pct">0%</span>
+                </div>
+                <div class="h-1.5 bg-surface-variant w-full rounded overflow-hidden">
+                    <div id="cpu-bar" class="h-full bg-tertiary shadow-[0_0_8px_rgba(255,224,74,0.5)] hw-bar" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-[10px] mb-1">
+                    <span class="text-on-surface">RAM</span>
+                    <span class="text-secondary" id="mem-pct">0%</span>
+                </div>
+                <div class="h-1.5 bg-surface-variant w-full rounded overflow-hidden">
+                    <div id="mem-bar" class="h-full bg-secondary shadow-[0_0_5px_rgba(0,255,204,0.5)] hw-bar" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-[10px] mb-1">
+                    <span class="text-on-surface">GPU / TPU</span>
+                    <span class="text-primary" id="gpu-pct">0%</span>
+                </div>
+                <div class="h-1.5 bg-surface-variant w-full rounded overflow-hidden">
+                    <div id="gpu-bar" class="h-full bg-primary shadow-[0_0_10px_rgba(255,45,120,0.8)] hw-bar" style="width:0%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between font-label text-[10px] mb-1">
+                    <span class="text-on-surface">DISK</span>
+                    <span class="text-on-surface-variant" id="disk-pct">0%</span>
+                </div>
+                <div class="h-1.5 bg-surface-variant w-full rounded overflow-hidden">
+                    <div id="disk-bar" class="h-full bg-outline hw-bar" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="pt-2 border-t border-outline-variant/30 grid grid-cols-2 gap-1 font-label text-[9px] text-on-surface-variant">
+                <span>PROC CPU</span><span id="proc-cpu" class="text-right text-on-surface">—</span>
+                <span>PROC MEM</span><span id="proc-mem" class="text-right text-on-surface">—</span>
+                <span>THREADS</span><span id="proc-threads" class="text-right text-on-surface">—</span>
+            </div>
+        </div>
+
+        <!-- Session status -->
+        <div class="mt-auto pt-2 border-t border-outline-variant/30 flex justify-between items-center font-label text-[10px] text-on-surface-variant flex-shrink-0">
+            <span>NODE: LOCAL</span>
+            <span class="flex items-center gap-1 text-secondary">
+                <span class="w-1.5 h-1.5 bg-secondary rounded-full shadow-[0_0_5px_#00ffcc] animate-pulse"></span> SYNCED
+            </span>
+        </div>
+    </div>
+</div>
+
+<script>
+const densityHistory = Array(20).fill(0);
+const anomalyHistory = Array(20).fill(0);
+let currentThreshold = 0.31;
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('sys-time').innerText = 'SYS_TIME: ' + now.toTimeString().slice(0,8);
+}
+setInterval(updateClock, 500);
+
+async function updateProgress() {
+    try {
+        const d = await fetch('/api/status').then(r=>r.json());
+        const pct = Math.floor(d.pct_complete || 0);
+        document.getElementById('scan-pct').innerText = pct + '%';
+        document.getElementById('scan-bar').style.width = pct + '%';
+        if (d.threshold) {
+            currentThreshold = d.threshold;
+            document.getElementById('stat-threshold').innerText = currentThreshold.toFixed(2);
+            document.getElementById('thr-label').innerText = 'THR: ' + currentThreshold.toFixed(2);
+        }
+    } catch(e) {}
+}
+setInterval(updateProgress, 1500);
+
+const socket = io();
+
+socket.on('metrics_update', (data) => {
+    const density = data.density_score || 0;
+    const anomaly = data.anomaly_score || 0;
+    const fps     = data.fps || 0;
+    const motion  = data.motion_score || 0;
+    if (data.current_threshold) {
+        currentThreshold = data.current_threshold;
+        document.getElementById('stat-threshold').innerText = currentThreshold.toFixed(2);
+        document.getElementById('thr-label').innerText = 'THR: ' + currentThreshold.toFixed(2);
+    }
+
+    document.getElementById('stat-density').innerText = density.toFixed(3);
+    document.getElementById('stat-anomaly').innerText = anomaly.toFixed(3);
+    document.getElementById('live-fps').innerText      = fps.toFixed(1);
+    document.getElementById('live-motion').innerText   = motion.toFixed(3);
+
+    // Color anomaly stat
+    const aEl = document.getElementById('stat-anomaly');
+    if (anomaly > currentThreshold) {
+        aEl.className = 'text-primary neon-text-primary font-bold text-sm';
+        document.getElementById('anomaly-badge').className =
+            'px-2 py-0.5 rounded font-bold bg-primary/20 backdrop-blur text-primary neon-text-primary animate-pulse';
+        document.getElementById('anomaly-badge').innerText = 'ANOMALY';
+    } else {
+        aEl.className = 'text-on-surface font-bold text-sm';
+        document.getElementById('anomaly-badge').className =
+            'px-2 py-0.5 rounded font-bold bg-surface-container-lowest/70 backdrop-blur text-secondary';
+        document.getElementById('anomaly-badge').innerText = 'NORMAL';
+    }
+
+    densityHistory.shift(); densityHistory.push(density);
+    anomalyHistory.shift(); anomalyHistory.push(anomaly);
+    renderSparklines();
+});
+
+socket.on('new_alert', () => { refreshAlerts(); });
+
+function renderSparklines() {
+    // Density bars
+    const dMax = Math.max(...densityHistory, 0.01);
+    document.getElementById('density-bars').innerHTML = densityHistory.map(d => {
+        const h = Math.max(5, Math.min(100, (d/dMax)*100));
+        const col = d > 0.75 ? '#ff2d78' : d > 0.4 ? '#ffe04a' : '#00ffcc';
+        return `<div class="flex-1 rounded-t transition-all duration-300" style="height:${h}%;background:${col}40;border-top:1px solid ${col}60"></div>`;
+    }).join('');
+
+    // Anomaly bars
+    const aMax = Math.max(...anomalyHistory, 0.01);
+    document.getElementById('anomaly-bars').innerHTML = anomalyHistory.map(a => {
+        const h = Math.max(5, Math.min(100, (a/aMax)*100));
+        const isA = a > currentThreshold;
+        const col = isA ? '#ff2d78' : '#00ffcc';
+        return `<div class="flex-1 rounded-t transition-all duration-300" style="height:${h}%;background:${col}${isA?'60':'30'};border-top:1px solid ${col}50"></div>`;
+    }).join('');
+}
+renderSparklines();
+
+async function fetchHardware() {
+    try {
+        const hw = await fetch('/api/hardware').then(r=>r.json());
+        document.getElementById('cpu-pct').innerText = Math.round(hw.cpu) + '%';
+        document.getElementById('cpu-bar').style.width  = hw.cpu + '%';
+        document.getElementById('mem-pct').innerText = Math.round(hw.mem) + '%';
+        document.getElementById('mem-bar').style.width  = hw.mem + '%';
+        document.getElementById('gpu-pct').innerText = Math.round(hw.gpu) + '%';
+        document.getElementById('gpu-bar').style.width  = hw.gpu + '%';
+        document.getElementById('disk-pct').innerText = Math.round(hw.disk_pct||0) + '%';
+        document.getElementById('disk-bar').style.width = (hw.disk_pct||0) + '%';
+        document.getElementById('live-latency').innerHTML = (hw.latency||0) + '<span class="text-xs">ms</span>';
+        document.getElementById('proc-cpu').innerText = (hw.proc_cpu||0) + '%';
+        document.getElementById('proc-mem').innerText = (hw.proc_mem_mb||0) + ' MB';
+        document.getElementById('proc-threads').innerText = hw.proc_threads||'—';
+    } catch(e) {}
+}
+setInterval(fetchHardware, 2500);
+fetchHardware();
+
+async function refreshAlerts() {
+    try {
+        const data = await fetch('/api/anomalies?limit=30').then(r=>r.json());
+        const log = document.getElementById('event-log');
+        const badge = document.getElementById('active-alerts-count');
+        const clearBtn = document.getElementById('dismiss-all-btn');
+
+        if (!data.length) {
+            badge.innerText = '0 ACTIVE';
+            clearBtn.classList.add('hidden');
+            log.innerHTML = `<div class="text-center py-8 text-on-surface-variant font-label text-xs italic">
+                All clear. No recent anomalies detected.</div>`;
+            return;
+        }
+
+        const activeCount = data.filter(a => a.alert_type === 'ANOMALY').length;
+        badge.innerText = activeCount + ' ACTIVE';
+        clearBtn.classList.remove('hidden');
+
+        log.innerHTML = data.map(a => {
+            const isAnomaly  = a.alert_type === 'ANOMALY';
+            const isObj      = a.alert_type === 'ABANDONED_OBJECT';
+            const isDensity  = a.alert_type === 'OVERCROWDING';
+            const col  = isAnomaly ? 'primary' : isDensity ? 'tertiary' : 'secondary';
+            const icon = isAnomaly ? 'warning' : isDensity ? 'groups' : 'shopping_bag';
+            const risk = isAnomaly
+                ? Math.round(Math.min(100, a.anomaly_score * 120)) + '%'
+                : Math.round(a.anomaly_score * 100) + '%';
+            const snap = a.snapshot_b64
+                ? `<img src="data:image/jpeg;base64,${a.snapshot_b64}" class="w-full rounded mt-2 border border-outline-variant/30" style="max-height:80px;object-fit:cover;">`
+                : '';
+            return `
+            <div class="alert-card alert-entering rounded p-3 border-l-2 border-l-${col} bg-surface-container-high relative" id="alert-${a.id}">
+                <div class="absolute top-0 right-0 px-2 py-0.5 bg-${col}/20 text-${col} font-label text-[9px] rounded-bl">RISK ${risk}</div>
+                <div class="flex items-start gap-2 mb-2">
+                    <span class="material-symbols-outlined text-${col} text-base mt-0.5">${icon}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-headline font-bold text-xs text-${col}">${a.alert_type.replace('_',' ')}</div>
+                        <div class="font-label text-[10px] text-on-surface-variant truncate">${a.details||'—'}</div>
+                    </div>
+                </div>
+                <div class="font-label text-[10px] grid grid-cols-2 gap-x-2 gap-y-0.5 mb-2">
+                    <span class="text-on-surface-variant">TIME</span>
+                    <span class="text-on-surface">${(a.timestamp||'').slice(11,19)||'—'}</span>
+                    <span class="text-on-surface-variant">SCORE</span>
+                    <span class="text-on-surface font-bold">${(a.anomaly_score||0).toFixed(3)}</span>
+                    <span class="text-on-surface-variant">SEV</span>
+                    <span class="text-${col} font-bold">${a.severity}</span>
+                </div>
+                ${snap}
+                <div class="flex gap-1.5 mt-2">
+                    ${isAnomaly ? `<button onclick="viewAlert(${a.id})" class="flex-1 font-label text-[10px] py-1 border border-primary/40 text-primary hover:bg-primary/10 transition-colors rounded">VIEW</button>` : ''}
+                    <button onclick="dismissAlert(${a.id})" id="dismiss-${a.id}"
+                        class="flex-1 font-label text-[10px] py-1 border border-outline-variant/50 text-on-surface-variant hover:border-primary/30 hover:text-primary transition-colors rounded">DISMISS</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function dismissAlert(id) {
+    try {
+        const btn = document.getElementById('dismiss-' + id);
+        if (btn) { btn.innerText = '...'; btn.disabled = true; }
+        await fetch(`/api/alerts/${id}/dismiss`, { method: 'POST' });
+        const card = document.getElementById('alert-' + id);
+        if (card) { card.style.opacity='0'; card.style.transform='translateX(20px)'; card.style.transition='all 0.3s'; setTimeout(()=>{refreshAlerts();},310); }
+    } catch(e) { console.error(e); }
+}
+
+async function dismissAllAlerts() {
+    try {
+        await fetch('/api/alerts/dismiss_all', { method: 'POST' });
+        refreshAlerts();
+    } catch(e) { console.error(e); }
+}
+
+function viewAlert(id) {
+    // Navigate to analytics for full alert view
+    window.location.href = '/heatmaps';
+}
+
+refreshAlerts();
+setInterval(refreshAlerts, 8000);
+</script>
+{% endblock %}
